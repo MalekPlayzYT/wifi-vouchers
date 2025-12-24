@@ -1,42 +1,1456 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Wi-Fi Voucher Portal</title>
-  <style>
-    body { font-family: Arial; background: #f0f2f5; display:flex; align-items:center; justify-content:center; height:100vh; margin:0 }
-    .card { background:#fff; padding:2rem; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); width:90%; max-width:360px; text-align:center }
-    input { width:100%; padding:.75rem; margin:1rem 0; border:1px solid #ccc; border-radius:4px; font-size:1rem }
-    button { padding:.75rem 1.5rem; font-size:1rem; background:#0073e6; color:#fff; border:none; border-radius:4px; cursor:pointer }
-    button:hover { background:#005bb5 }
-    .msg { margin-top:1rem; }
-    .success { color:#2a8f2a }
-    .error { color:#d93025 }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Toy Town Helper — Mobile</title>
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --panel:#ffffffee;
+    --stroke:#00000014;
+    --shadow: 0 14px 40px rgba(0,0,0,.20);
+    --shadow2: 0 20px 60px rgba(0,0,0,.28);
+  }
+  html,body{height:100%;margin:0;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:#bff2ff; touch-action:none; -webkit-user-select:none; user-select:none;}
+  #app{position:fixed; inset:0; display:flex; flex-direction:column;}
+  #top{display:flex; gap:10px; align-items:center; justify-content:space-between; padding:10px; padding-top:calc(10px + env(safe-area-inset-top));}
+  .card{
+    background:var(--panel);
+    border:4px solid var(--stroke);
+    border-radius:24px;
+    box-shadow:var(--shadow);
+    backdrop-filter: blur(6px);
+  }
+  #status{
+    flex:1; display:flex; align-items:center; gap:12px;
+    padding:10px 12px; min-height:74px;
+  }
+  #face{
+    width:60px;height:60px;border-radius:18px;
+    display:grid;place-items:center;font-size:36px;
+    background:#fff;border:4px solid #00000010;
+    box-shadow: inset 0 -8px 0 rgba(0,0,0,.06);
+  }
+  #texts{min-width:0}
+  #title{font-weight:1000; font-size:18px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #sub{font-weight:850; font-size:14px; opacity:.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #buttons{display:flex; gap:10px;}
+  .bigbtn{
+    width:74px;height:74px;border-radius:26px;
+    border:4px solid #00000010; background:#fff;
+    box-shadow:var(--shadow);
+    display:grid;place-items:center;
+    font-size:34px;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .bigbtn:active{transform: translateY(1px) scale(.99);}
+
+  #stage{
+    flex:1; position:relative; margin:0 10px 10px;
+    border-radius:28px; overflow:hidden;
+    border:5px solid #00000010; box-shadow:var(--shadow2);
+    background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.22));
+  }
+  canvas{width:100%;height:100%;display:block;}
+
+  .overlay{
+    position:absolute; inset:0;
+    display:none;
+    background: rgba(0,0,0,.18);
+    backdrop-filter: blur(3px);
+  }
+  .overlay.show{display:flex;}
+
+  .panel{
+    margin:auto;
+    width:min(920px, 94vw);
+    max-height: 90vh;
+    overflow:auto;
+    padding:14px;
+    border-radius:28px;
+    background: var(--panel);
+    border:5px solid var(--stroke);
+    box-shadow:var(--shadow2);
+  }
+
+  .row{display:flex; gap:12px; flex-wrap:wrap;}
+  .h1{font-weight:1000; font-size:22px; color:var(--ink); margin:6px 0 10px;}
+  .hint{font-weight:850; opacity:.72; margin-bottom:10px;}
+  .tile{
+    flex:1; min-width: 240px;
+    padding:12px;
+    border-radius:24px;
+    border:4px solid #00000010;
+    background:#fff;
+    box-shadow: var(--shadow);
+  }
+  .tileTitle{font-weight:1000; font-size:16px; margin-bottom:10px;}
+  .picker{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .swatch{
+    width:54px;height:54px;border-radius:18px;
+    border:4px solid #00000010;
+    cursor:pointer;
+    box-shadow: inset 0 -8px 0 rgba(0,0,0,.06);
+    display:grid; place-items:center;
+  }
+  .swatch:active{transform: translateY(1px) scale(.99);}
+  .sliderBox{display:flex; align-items:center; gap:10px;}
+  input[type="range"]{width:100%}
+  .closeRow{display:flex; justify-content:space-between; gap:10px; margin-top:12px;}
+  .pill{
+    flex:1;
+    padding:14px 14px;
+    border-radius:22px;
+    border:4px solid #00000010;
+    background:#fff;
+    box-shadow:var(--shadow);
+    font-weight:1000;
+    font-size:18px;
+    cursor:pointer;
+  }
+  .pill:active{transform: translateY(1px) scale(.99);}
+
+  #previewBox{display:flex; gap:12px; align-items:center;}
+  #previewCanvas{
+    width:180px; height:120px;
+    border-radius:22px;
+    border:4px solid rgba(0,0,0,.10);
+    background: linear-gradient(180deg, rgba(94,194,255,.20), rgba(255,255,255,.85));
+    box-shadow: inset 0 -10px 0 rgba(0,0,0,.04);
+  }
+  #previewInfo{font-weight:900; opacity:.78;}
+
+  #miniOverlay .panel{padding:0; overflow:hidden;}
+  #miniHeader{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px;
+    border-bottom:4px solid #00000010;
+    background:#fff;
+  }
+  #miniName{font-weight:1000; font-size:18px;}
+  #miniArea{
+    position:relative;
+    height: min(620px, 76vh);
+    background: linear-gradient(180deg, rgba(255,255,255,.70), rgba(255,255,255,.25));
+    overflow:hidden;
+  }
+  #miniArea *{touch-action:none;}
+  .miniBtn{
+    width:70px;height:70px;border-radius:24px;
+    border:4px solid #00000010;background:#fff;
+    box-shadow:var(--shadow);
+    font-size:30px; display:grid; place-items:center;
+    cursor:pointer;
+  }
+  .miniBtn:active{transform: translateY(1px) scale(.99);}
+
+  #toast{
+    position:absolute; left:50%; top:14%;
+    transform: translateX(-50%);
+    padding:12px 16px;
+    border-radius:26px;
+    border:5px solid #00000010;
+    background:#fff;
+    box-shadow:var(--shadow2);
+    font-weight:1000;
+    font-size:28px;
+    display:none;
+    pointer-events:none;
+  }
+  #toast.show{display:block;}
+
+  /* Mobile: bigger tap targets, less text */
+  @media (max-width: 520px){
+    #title{font-size:16px}
+    #sub{font-size:13px}
+    .bigbtn{width:68px;height:68px;border-radius:24px;font-size:32px}
+    #status{min-height:70px}
+    #face{width:56px;height:56px;border-radius:16px}
+    .pill{font-size:17px}
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h2>Enter Your Voucher Code</h2>
-    <input id="code" placeholder="e.g. A4X9-M2Q7" />
-    <button onclick="redeem()">Redeem</button>
-    <div id="msg" class="msg"></div>
+<div id="app">
+  <div id="top">
+    <div id="status" class="card">
+      <div id="face">🚗</div>
+      <div id="texts">
+        <div id="title">Toy Town Helper</div>
+        <div id="sub">Tap the HELP bubble → mini-game → next HELP!</div>
+      </div>
+    </div>
+    <div id="buttons">
+      <button class="bigbtn" id="garageBtn" title="Garage">🎨</button>
+      <button class="bigbtn" id="hornBtn" title="Honk">📣</button>
+    </div>
   </div>
-  <script>
-    async function redeem() {
-      const code = document.getElementById('code').value.trim();
-      const msg = document.getElementById('msg');
-      if (!code) return;
-      // fetch the JSON
-      const res = await fetch('vouchers.json');
-      if (!res.ok) return msg.textContent = 'Error loading data';
-      const { wifiPassword, codes } = await res.json();
-      // check code
-      if (codes.includes(code)) {
-        msg.innerHTML = `<div class="success">✔ Valid code!<br>Your Wi-Fi password is:<br><strong>${wifiPassword}</strong></div>`;
-      } else {
-        msg.innerHTML = `<div class="error">❌ Invalid or already used code.</div>`;
+
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="toast">YAY! 🎉</div>
+
+    <div id="garageOverlay" class="overlay">
+      <div class="panel">
+        <div class="h1">Garage 🎨</div>
+        <div class="hint">Preview ✅ Color • Size • Wheels • Horn</div>
+
+        <div class="row">
+          <div class="tile">
+            <div class="tileTitle">Car Preview</div>
+            <div id="previewBox">
+              <canvas id="previewCanvas" width="360" height="240"></canvas>
+              <div id="previewInfo">
+                Tap 📣 to test horn.<br/>
+                Make it BIG or TINY.<br/>
+                Then press PLAY 🚗
+              </div>
+            </div>
+          </div>
+
+          <div class="tile">
+            <div class="tileTitle">Color</div>
+            <div class="picker" id="colorPicker"></div>
+          </div>
+
+          <div class="tile">
+            <div class="tileTitle">Car Size</div>
+            <div class="sliderBox">
+              <span style="font-weight:1000;">🐭</span>
+              <input id="sizeRange" type="range" min="0.7" max="1.9" step="0.05" value="1.0"/>
+              <span style="font-weight:1000;">🦖</span>
+            </div>
+          </div>
+
+          <div class="tile">
+            <div class="tileTitle">Wheels</div>
+            <div class="sliderBox">
+              <span style="font-weight:1000;">🛞</span>
+              <input id="wheelRange" type="range" min="0.7" max="2.2" step="0.05" value="1.0"/>
+              <span style="font-weight:1000;">🛞</span>
+            </div>
+          </div>
+
+          <div class="tile">
+            <div class="tileTitle">Horn</div>
+            <div class="picker" id="hornPicker"></div>
+          </div>
+        </div>
+
+        <div class="closeRow">
+          <button class="pill" id="closeGarage">PLAY! 🚗</button>
+          <button class="pill" id="randomize">RANDOM ✨</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="miniOverlay" class="overlay">
+      <div class="panel">
+        <div id="miniHeader">
+          <div id="miniName">Mini-game</div>
+          <button class="miniBtn" id="miniExit" title="Exit">❌</button>
+        </div>
+        <div id="miniArea"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id)=>document.getElementById(id);
+
+  const canvas = $("c");
+  const ctx = canvas.getContext("2d");
+  const stage = $("stage");
+
+  const face  = $("face");
+  const title = $("title");
+  const sub   = $("sub");
+  const toast = $("toast");
+
+  const garageOverlay = $("garageOverlay");
+  const garageBtn = $("garageBtn");
+  const closeGarage = $("closeGarage");
+  const randomizeBtn = $("randomize");
+
+  const colorPicker = $("colorPicker");
+  const hornPicker  = $("hornPicker");
+  const sizeRange   = $("sizeRange");
+  const wheelRange  = $("wheelRange");
+  const hornBtn = $("hornBtn");
+
+  const miniOverlay = $("miniOverlay");
+  const miniArea = $("miniArea");
+  const miniName = $("miniName");
+  const miniExit = $("miniExit");
+
+  const previewCanvas = $("previewCanvas");
+  const pctx = previewCanvas.getContext("2d");
+
+  // ===== Old Map (smaller) =====
+  const world = { w: 1800, h: 1200 };
+  const view  = { w: 1200, h: 780 }; // recalculated to screen aspect
+  const cam = { x: 300, y: 600 };
+
+  function updateViewToScreen(){
+    const dpr = canvas._dpr || 1;
+    const cw = canvas.width / dpr;
+    const ch = canvas.height / dpr;
+    const aspect = cw / ch;
+    view.h = 760;               // zoom-out amount (smaller map)
+    view.w = view.h * aspect;   // always fits screen ✅
+  }
+
+  function resize(){
+    const dpr = Math.max(1, Math.min(2, devicePixelRatio || 1));
+    canvas.width  = Math.floor(stage.clientWidth  * dpr);
+    canvas.height = Math.floor(stage.clientHeight * dpr);
+    canvas._dpr = dpr;
+    updateViewToScreen();
+  }
+  addEventListener("resize", resize, {passive:true});
+
+  // ===== Sound =====
+  let audioCtx = null;
+  function beep(freq=600, dur=0.08, gain=0.05, type="sine"){
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.value = gain;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + dur);
+    }catch(e){}
+  }
+  const Horns = [
+    {id:"beep", icon:"🚗", play:()=>{beep(520,0.08,0.05); setTimeout(()=>beep(390,0.10,0.05),90);} },
+    {id:"toot", icon:"🎺", play:()=>{beep(740,0.06,0.05,"triangle"); setTimeout(()=>beep(660,0.08,0.05,"triangle"),70);} },
+    {id:"boop", icon:"🤖", play:()=>{beep(330,0.07,0.05,"square"); setTimeout(()=>beep(440,0.07,0.04,"square"),80);} },
+    {id:"ding", icon:"🔔", play:()=>{beep(880,0.06,0.045); setTimeout(()=>beep(990,0.08,0.04),80);} },
+    {id:"woo",  icon:"🚨", play:()=>{beep(740,0.10,0.04); setTimeout(()=>beep(540,0.10,0.04),110); setTimeout(()=>beep(740,0.10,0.04),220);} },
+  ];
+  function happy(){ beep(900,0.06,0.05); setTimeout(()=>beep(1050,0.07,0.045),90); }
+
+  // ===== UI =====
+  function showToast(text){
+    toast.textContent = text;
+    toast.classList.add("show");
+    setTimeout(()=>toast.classList.remove("show"), 650);
+  }
+
+  // ===== Camera transforms =====
+  function fit(){
+    const dpr = canvas._dpr || 1;
+    const cw = canvas.width, ch = canvas.height;
+    const pad = 16*dpr;
+    const sx = (cw - pad*2) / view.w;
+    const sy = (ch - pad*2) / view.h;
+    const s = Math.min(sx, sy);
+    const ox = (cw - view.w*s) / 2;
+    const oy = (ch - view.h*s) / 2;
+    return {ox,oy,s};
+  }
+  function W2C(x,y){
+    const {ox,oy,s} = fit();
+    const vx = x - cam.x + view.w/2;
+    const vy = y - cam.y + view.h/2;
+    return {x: ox + vx*s, y: oy + vy*s, s};
+  }
+  function C2W(px,py){
+    const {ox,oy,s} = fit();
+    const vx = (px - ox) / s;
+    const vy = (py - oy) / s;
+    return {x: vx + cam.x - view.w/2, y: vy + cam.y - view.h/2};
+  }
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  function lerpAngle(a,b,t){
+    const diff = Math.atan2(Math.sin(b-a), Math.cos(b-a));
+    return a + diff*t;
+  }
+
+  // ===== Car customization =====
+  const car = {
+    x: 240, y: 620, heading: 0,
+    color: "#5ec2ff",
+    size: 1.0,
+    wheel: 1.0,
+    hornId: "beep",
+  };
+  const CarColors = ["#ff4fa3","#5ec2ff","#7cffb2","#ffd27c","#b48cff","#ffb36b","#ffffff","#222222","#ff3b30","#34c759"];
+  function currentHorn(){ return Horns.find(h=>h.id===car.hornId) || Horns[0]; }
+
+  function previewDraw(){
+    const W = previewCanvas.width, H = previewCanvas.height;
+    pctx.clearRect(0,0,W,H);
+    pctx.fillStyle = "rgba(255,255,255,.8)";
+    pctx.fillRect(0,0,W,H);
+
+    const cx = W*0.50, cy = H*0.58;
+    const s = 1.25 * car.size;
+
+    pctx.fillStyle = "rgba(0,0,0,.14)";
+    pctx.beginPath(); pctx.ellipse(cx, cy+55*s, 90*s, 26*s, 0, 0, Math.PI*2); pctx.fill();
+
+    pctx.fillStyle = car.color;
+    pctx.strokeStyle = "rgba(0,0,0,.12)";
+    pctx.lineWidth = 10*s;
+    rr(cx-110*s, cy-60*s, 220*s, 140*s, 60*s);
+    pctx.fill(); pctx.stroke();
+
+    pctx.fillStyle = "rgba(255,255,255,.55)";
+    rr(cx-20*s, cy-55*s, 90*s, 70*s, 35*s);
+    pctx.fill();
+
+    const ws = s * car.wheel;
+    pctx.fillStyle = "rgba(0,0,0,.35)";
+    pctx.beginPath(); pctx.arc(cx-70*s, cy+75*s, 22*ws, 0, Math.PI*2); pctx.fill();
+    pctx.beginPath(); pctx.arc(cx+70*s, cy+75*s, 22*ws, 0, Math.PI*2); pctx.fill();
+
+    pctx.font = `28px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    pctx.textAlign="left"; pctx.textBaseline="top";
+    const icon = (Horns.find(h=>h.id===car.hornId)?.icon) || "📣";
+    pctx.fillStyle = "rgba(0,0,0,.35)";
+    pctx.fillText(`Horn: ${icon}`, 14, 14);
+
+    function rr(x,y,w,h,r){
+      const rr = Math.min(r,w/2,h/2);
+      pctx.beginPath();
+      pctx.moveTo(x+rr,y);
+      pctx.arcTo(x+w,y,x+w,y+h,rr);
+      pctx.arcTo(x+w,y+h,x,y+h,rr);
+      pctx.arcTo(x,y+h,x,y,rr);
+      pctx.arcTo(x,y,x+w,y,rr);
+      pctx.closePath();
+    }
+  }
+
+  function buildGarageUI(){
+    colorPicker.innerHTML = "";
+    CarColors.forEach(col=>{
+      const b = document.createElement("button");
+      b.className="swatch";
+      b.style.background = col;
+      b.onclick = ()=>{ car.color=col; previewDraw(); };
+      colorPicker.appendChild(b);
+    });
+
+    hornPicker.innerHTML = "";
+    Horns.forEach(h=>{
+      const b = document.createElement("button");
+      b.className="swatch";
+      b.style.background="#fff";
+      b.innerHTML = `<div style="font-size:28px">${h.icon}</div>`;
+      b.onclick = ()=>{ car.hornId=h.id; h.play(); previewDraw(); };
+      hornPicker.appendChild(b);
+    });
+
+    sizeRange.value = car.size;
+    wheelRange.value = car.wheel;
+    previewDraw();
+  }
+
+  garageBtn.onclick = ()=>{ buildGarageUI(); garageOverlay.classList.add("show"); };
+  closeGarage.onclick = ()=>{ garageOverlay.classList.remove("show"); };
+  randomizeBtn.onclick = ()=>{
+    car.color = CarColors[Math.floor(Math.random()*CarColors.length)];
+    car.size  = 0.7 + Math.random()*1.0;
+    car.wheel = 0.7 + Math.random()*1.2;
+    car.hornId = Horns[Math.floor(Math.random()*Horns.length)].id;
+    sizeRange.value = car.size;
+    wheelRange.value = car.wheel;
+    currentHorn().play();
+    previewDraw();
+    showToast("WOW! ✨");
+  };
+  sizeRange.oninput = ()=>{ car.size = parseFloat(sizeRange.value); previewDraw(); };
+  wheelRange.oninput = ()=>{ car.wheel = parseFloat(wheelRange.value); previewDraw(); };
+  hornBtn.onclick = ()=> currentHorn().play();
+
+  // ===== Town Toys =====
+  const toys = [
+    {x:240,y:620,w:180,h:160,emoji:"🏠",bounce:0, z:1},
+    {x:560,y:360,w:260,h:190,emoji:"🎪",bounce:0, z:1},
+    {x:860,y:720,w:260,h:190,emoji:"🌳",bounce:0, z:1},
+    {x:1110,y:420,w:320,h:240,emoji:"🏰",bounce:0, z:3},
+    {x:1200,y:840,w:260,h:190,emoji:"🦆",bounce:0, z:1},
+    {x:1480,y:640,w:260,h:190,emoji:"🍦",bounce:0, z:1},
+    {x:1520,y:980,w:260,h:190,emoji:"🚂",bounce:0, z:1},
+    {x:420,y:980,w:260,h:190,emoji:"🧸",bounce:0, z:1},
+  ];
+  function hitToy(wx,wy){
+    let best=null;
+    for(const t of toys){
+      if(Math.abs(wx-t.x) < t.w/2 && Math.abs(wy-t.y) < t.h/2){
+        if(!best || (t.z||0) > (best.z||0)) best=t;
       }
     }
-  </script>
+    return best;
+  }
+
+  // ===== Mini-game Safety (fix "2nd time" bugs) =====
+  const MiniGames = [];
+  let miniSessionId = 0;
+  let miniCleanups = [];
+
+  function miniNewSession(){
+    for(const fn of miniCleanups) { try{ fn(); }catch(e){} }
+    miniCleanups = [];
+    miniSessionId++;
+    return miniSessionId;
+  }
+  function miniSetTimeout(fn, ms, sid){
+    const id = setTimeout(()=>{ if(sid===miniSessionId) fn(); }, ms);
+    miniCleanups.push(()=>clearTimeout(id));
+    return id;
+  }
+  function miniSetInterval(fn, ms, sid){
+    const id = setInterval(()=>{ if(sid===miniSessionId) fn(); }, ms);
+    miniCleanups.push(()=>clearInterval(id));
+    return id;
+  }
+  function miniRAF(fn, sid){
+    let rafId=0;
+    const step = (t)=>{ if(sid!==miniSessionId) return; fn(t); rafId=requestAnimationFrame(step); };
+    rafId=requestAnimationFrame(step);
+    miniCleanups.push(()=>cancelAnimationFrame(rafId));
+  }
+  function clearMiniArea(){
+    miniNewSession();
+    miniArea.innerHTML = "";
+    miniArea.onclick = null;
+    miniArea.onpointerdown = null;
+    miniArea.onpointermove = null;
+    miniArea.onpointerup = null;
+    miniArea.onpointercancel = null;
+  }
+
+  function addMiniTip(container, text){
+    const tip = document.createElement("div");
+    tip.textContent = text;
+    tip.style.cssText = `
+      position:absolute; left:50%; top:14px; transform:translateX(-50%);
+      padding:10px 14px; border-radius: 22px;
+      background:#fff; border:4px solid rgba(0,0,0,.10);
+      box-shadow: 0 14px 40px rgba(0,0,0,.20);
+      font-weight:1000; font-size:22px; user-select:none;
+    `;
+    container.appendChild(tip);
+  }
+
+  function startMiniGame(id, onWin){
+    const mg = MiniGames.find(g=>g.id===id) || MiniGames[0];
+    miniName.textContent = mg.name;
+    clearMiniArea();
+    miniOverlay.classList.add("show");
+
+    const sid = miniSessionId;
+    try{
+      mg.start(miniArea, ()=>{
+        if(sid !== miniSessionId) return;
+        happy();
+        miniOverlay.classList.remove("show");
+        clearMiniArea();
+        onWin?.();
+      }, sid);
+    }catch(e){
+      miniOverlay.classList.remove("show");
+      clearMiniArea();
+      onWin?.();
+    }
+  }
+  miniExit.onclick = ()=>{ miniOverlay.classList.remove("show"); clearMiniArea(); };
+
+  // ===== Solid Minigames (all reset-safe) =====
+
+  // A) Pop Balloons (always enough, respawn if low)
+  MiniGames.push({
+    id:"balloons", name:"Pop Balloons 🎈",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "TAP 🎈");
+      let popped=0, needed=18;
+
+      function spawnOne(){
+        const W=container.clientWidth, H=container.clientHeight;
+        const b=document.createElement("div");
+        b.textContent="🎈";
+        const x=rand(60,W-60), y=rand(140,H-80), s=rand(68,96);
+        b.style.cssText=`
+          position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%);
+          width:${s}px; height:${s}px; border-radius:999px;
+          background: radial-gradient(circle at 35% 30%, #ffffffcc, #ff4fa3);
+          border:4px solid rgba(0,0,0,.10);
+          box-shadow:0 12px 28px rgba(0,0,0,.18);
+          display:grid; place-items:center; font-size:28px;
+        `;
+        b.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          b.remove();
+          beep(760,0.05,0.04);
+          popped++;
+          if(popped>=needed) win();
+          else if(container.querySelectorAll(".bal").length < 10) burstSpawn(6);
+        };
+        b.classList.add("bal");
+        container.appendChild(b);
+
+        // Float a bit
+        let yy=y;
+        const vy=rand(-24,-12);
+        miniRAF(()=>{
+          if(sid!==miniSessionId || !b.isConnected) return;
+          yy += vy*0.016;
+          b.style.top = yy+"px";
+          if(yy < 110) yy = H-80;
+        }, sid);
+      }
+
+      function burstSpawn(n){
+        for(let i=0;i<n;i++) miniSetTimeout(spawnOne, i*70, sid);
+      }
+      burstSpawn(20);
+    }
+  });
+
+  // B) Catch Stars (tap moving stars)
+  MiniGames.push({
+    id:"stars", name:"Catch Stars ⭐",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "TAP ⭐");
+      const W=container.clientWidth, H=container.clientHeight;
+      let caught=0, needed=14;
+
+      function makeStar(){
+        const el=document.createElement("div");
+        el.textContent="⭐";
+        el.style.cssText=`position:absolute; left:${rand(60,W-60)}px; top:${rand(140,H-60)}px; transform:translate(-50%,-50%); font-size:64px;`;
+        container.appendChild(el);
+        let x=rand(60,W-60), y=rand(140,H-60);
+        let vx=rand(-220,220), vy=rand(-160,160);
+
+        el.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          el.remove();
+          beep(990,0.06,0.04);
+          caught++;
+          if(caught>=needed) win();
+          else makeStar();
+        };
+
+        miniRAF(()=>{
+          if(sid!==miniSessionId || !el.isConnected) return;
+          x += vx*0.016; y += vy*0.016;
+          if(x<60||x>W-60) vx*=-1;
+          if(y<130||y>H-60) vy*=-1;
+          el.style.left = x+"px";
+          el.style.top  = y+"px";
+        }, sid);
+      }
+
+      for(let i=0;i<6;i++) makeStar();
+    }
+  });
+
+  // C) Color Buttons (press the shown color)
+  MiniGames.push({
+    id:"colors", name:"Press The Color 🟥🟦🟨",
+    start(container, win, sid){
+      container.style.position="relative";
+      const colors=[
+        {emoji:"🟥", bg:"#ff3b30"},
+        {emoji:"🟦", bg:"#0a84ff"},
+        {emoji:"🟨", bg:"#ffd60a"},
+        {emoji:"🟩", bg:"#34c759"},
+      ];
+      let score=0, needed=10;
+      let target = colors[Math.floor(Math.random()*colors.length)];
+      addMiniTip(container, `PRESS ${target.emoji}`);
+
+      const row=document.createElement("div");
+      row.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%); display:flex; gap:14px; flex-wrap:wrap; justify-content:center;`;
+      container.appendChild(row);
+
+      function setNewTarget(){
+        target = colors[Math.floor(Math.random()*colors.length)];
+        container.firstChild.textContent = `PRESS ${target.emoji}`;
+      }
+
+      colors.forEach(c=>{
+        const b=document.createElement("button");
+        b.style.cssText=`
+          width: min(42vw, 150px); height:min(42vw, 150px);
+          border-radius:44px; border:4px solid rgba(0,0,0,.10);
+          box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          background:${c.bg}; font-size:56px; cursor:pointer;
+        `;
+        b.textContent=c.emoji;
+        b.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          if(c.emoji===target.emoji){
+            beep(990,0.06,0.04);
+            score++;
+            if(score>=needed) win();
+            else setNewTarget();
+          }else beep(220,0.08,0.05);
+        };
+        row.appendChild(b);
+      });
+    }
+  });
+
+  // D) Match Shapes (drag 3 pieces)
+  MiniGames.push({
+    id:"match", name:"Match Shapes 🧩",
+    start(container, win, sid){
+      container.style.position="relative";
+      const W=container.clientWidth, H=container.clientHeight;
+      addMiniTip(container, "DRAG 🧩 TO MATCH");
+      let done=0;
+
+      const targets = [
+        {emoji:"🟥", x: W*0.78, y: H*0.34},
+        {emoji:"🟦", x: W*0.82, y: H*0.58},
+        {emoji:"🟨", x: W*0.74, y: H*0.80},
+      ];
+      const pieces = [
+        {emoji:"🟥", x: W*0.22, y: H*0.34},
+        {emoji:"🟦", x: W*0.20, y: H*0.58},
+        {emoji:"🟨", x: W*0.24, y: H*0.80},
+      ];
+
+      for(const t of targets){
+        const el=document.createElement("div");
+        el.textContent=t.emoji;
+        el.style.cssText=`
+          position:absolute; left:${t.x}px; top:${t.y}px; transform:translate(-50%,-50%);
+          width:104px; height:104px; border-radius: 30px;
+          background:#fff; border:6px dashed rgba(0,0,0,.18);
+          display:grid; place-items:center; font-size:50px;
+        `;
+        container.appendChild(el);
+      }
+
+      function makePiece(p){
+        const el=document.createElement("div");
+        el.textContent=p.emoji;
+        el.style.cssText=`
+          position:absolute; left:${p.x}px; top:${p.y}px; transform:translate(-50%,-50%);
+          width:104px; height:104px; border-radius: 30px;
+          background:#fff; border:6px solid rgba(0,0,0,.12);
+          box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          display:grid; place-items:center; font-size:50px;
+          touch-action:none; user-select:none;
+        `;
+        container.appendChild(el);
+
+        let dragging=false, offX=0, offY=0;
+
+        el.onpointerdown=(e)=>{
+          if(sid!==miniSessionId) return;
+          dragging=true;
+          el.setPointerCapture(e.pointerId);
+          const r=el.getBoundingClientRect();
+          offX = e.clientX - (r.left + r.width/2);
+          offY = e.clientY - (r.top  + r.height/2);
+          beep(760,0.05,0.04);
+        };
+        el.onpointermove=(e)=>{
+          if(!dragging || sid!==miniSessionId) return;
+          const cr=container.getBoundingClientRect();
+          el.style.left = `${e.clientX - cr.left - offX}px`;
+          el.style.top  = `${e.clientY - cr.top  - offY}px`;
+        };
+        el.onpointerup=()=>{
+          if(sid!==miniSessionId) return;
+          dragging=false;
+
+          const er=el.getBoundingClientRect();
+          const ex=er.left + er.width/2;
+          const ey=er.top  + er.height/2;
+          const cr=container.getBoundingClientRect();
+
+          for(const t of targets){
+            if(t.emoji!==p.emoji) continue;
+            const tx=cr.left + t.x;
+            const ty=cr.top  + t.y;
+            if(Math.hypot(ex-tx, ey-ty) < 64){
+              el.style.left=`${t.x}px`;
+              el.style.top =`${t.y}px`;
+              el.onpointerdown=el.onpointermove=el.onpointerup=null;
+              done++;
+              happy();
+              if(done>=3) win();
+            }
+          }
+        };
+      }
+      pieces.forEach(makePiece);
+    }
+  });
+
+  // E) Car Wash (scratch off dirt)
+  MiniGames.push({
+    id:"wash", name:"Car Wash 🧼",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container,"RUB 🧽 CLEAN!");
+      const W=container.clientWidth, H=container.clientHeight;
+
+      const carEl=document.createElement("div");
+      carEl.textContent="🚗";
+      carEl.style.cssText=`position:absolute; left:50%; top:54%; transform:translate(-50%,-50%); font-size:170px; filter:drop-shadow(0 18px 35px rgba(0,0,0,.25));`;
+      container.appendChild(carEl);
+
+      const wash=document.createElement("canvas");
+      wash.width=W; wash.height=H;
+      wash.style.cssText="position:absolute; inset:0; width:100%; height:100%;";
+      container.appendChild(wash);
+      const wctx=wash.getContext("2d");
+
+      wctx.fillStyle="rgba(90,70,40,.55)";
+      wctx.fillRect(0,0,W,H);
+
+      let cleaned=0;
+      let isDown=false;
+
+      function eraseAt(x,y){
+        wctx.save();
+        wctx.globalCompositeOperation="destination-out";
+        wctx.beginPath(); wctx.arc(x,y,50,0,Math.PI*2); wctx.fill();
+        wctx.restore();
+        cleaned += 2.2;
+        if(cleaned > 190) win();
+      }
+
+      container.onpointerdown=(e)=>{
+        if(sid!==miniSessionId) return;
+        isDown=true;
+        container.setPointerCapture(e.pointerId);
+        beep(760,0.05,0.04);
+      };
+      container.onpointermove=(e)=>{
+        if(!isDown || sid!==miniSessionId) return;
+        const r=container.getBoundingClientRect();
+        eraseAt(e.clientX-r.left, e.clientY-r.top);
+      };
+      container.onpointerup=()=>{ isDown=false; };
+      container.onpointercancel=()=>{ isDown=false; };
+    }
+  });
+
+  // F) Falling Coins (tap coins before they hit bottom)
+  MiniGames.push({
+    id:"coins", name:"Catch Coins 🪙",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container,"TAP 🪙");
+      const W=container.clientWidth, H=container.clientHeight;
+      let got=0, needed=14;
+
+      function spawn(){
+        const el=document.createElement("div");
+        el.textContent="🪙";
+        el.style.cssText=`position:absolute; left:${rand(60,W-60)}px; top:110px; transform:translate(-50%,-50%); font-size:72px; filter:drop-shadow(0 12px 22px rgba(0,0,0,.18));`;
+        container.appendChild(el);
+        let y=110;
+        const vy=rand(260,360);
+        el.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          el.remove();
+          beep(990,0.06,0.04);
+          got++;
+          if(got>=needed) win();
+          else spawn();
+        };
+        miniRAF(()=>{
+          if(sid!==miniSessionId || !el.isConnected) return;
+          y += vy*0.016;
+          el.style.top = y+"px";
+          if(y > H+80){
+            el.remove();
+            if(sid===miniSessionId) spawn();
+          }
+        }, sid);
+      }
+
+      for(let i=0;i<5;i++) miniSetTimeout(spawn, i*160, sid);
+    }
+  });
+
+  // G) Whack Duck (tap ducks fast)
+  MiniGames.push({
+    id:"ducks", name:"Whack Ducks 🦆",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container,"TAP 🦆");
+      let hit=0, needed=16;
+
+      function spawnDuck(){
+        const W=container.clientWidth, H=container.clientHeight;
+        const d=document.createElement("div");
+        d.textContent="🦆";
+        d.style.cssText=`position:absolute; left:${rand(12,88)}%; top:${rand(28,88)}%; transform:translate(-50%,-50%); font-size:86px; filter:drop-shadow(0 12px 22px rgba(0,0,0,.18));`;
+        container.appendChild(d);
+
+        // auto-remove if not tapped (so there is always stuff)
+        miniSetTimeout(()=>{ if(d.isConnected) d.remove(); }, 850, sid);
+
+        d.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          d.remove();
+          beep(760,0.05,0.04);
+          hit++;
+          if(hit>=needed) win();
+          else spawnDuck();
+        };
+      }
+
+      for(let i=0;i<7;i++) miniSetTimeout(spawnDuck, i*120, sid);
+      miniSetInterval(()=>{ if(container.querySelectorAll(".duck").length < 3) spawnDuck(); }, 380, sid);
+    }
+  });
+
+  // H) Build Tower (tap blocks)
+  MiniGames.push({
+    id:"tower", name:"Build Tower 🧱",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container,"TAP 🧱 TO STACK");
+      const base=document.createElement("div");
+      base.style.cssText=`position:absolute; left:50%; bottom:46px; transform:translateX(-50%); width:min(520px, 86%); height:18px; border-radius:14px; background:rgba(0,0,0,.12);`;
+      container.appendChild(base);
+
+      let h=0, needed=12;
+      function addBlock(){
+        const b=document.createElement("div");
+        b.textContent="🧱";
+        b.style.cssText=`position:absolute; left:50%; bottom:${64 + h*34}px; transform:translateX(-50%); font-size:56px;`;
+        container.appendChild(b);
+        beep(740,0.05,0.04);
+        h++;
+        if(h>=needed) win();
+      }
+
+      const btn=document.createElement("button");
+      btn.textContent="🧱";
+      btn.style.cssText=`position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(70vw, 260px); height:120px;
+        border-radius:36px; border:5px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
+        font-size:64px;`;
+      btn.onclick=()=>{ if(sid!==miniSessionId) return; addBlock(); };
+      container.appendChild(btn);
+    }
+  });
+
+  // I) Find The Animal (3x3)
+  MiniGames.push({
+    id:"find", name:"Find The Animal 👀",
+    start(container, win, sid){
+      container.style.position="relative";
+      const animals=["🐱","🐶","🦊","🐸","🐵","🐯","🐼","🦁"];
+      const target=animals[Math.floor(Math.random()*animals.length)];
+      addMiniTip(container, `FIND ${target}`);
+
+      const grid=document.createElement("div");
+      grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%); display:grid; grid-template-columns: repeat(3, min(30vw, 120px)); gap:14px;`;
+      container.appendChild(grid);
+
+      const picks=[target];
+      while(picks.length<9) picks.push(animals[Math.floor(Math.random()*animals.length)]);
+      for(let i=picks.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [picks[i],picks[j]]=[picks[j],picks[i]];
+      }
+
+      picks.forEach(a=>{
+        const b=document.createElement("button");
+        b.style.cssText=`width:min(30vw,120px); height:min(30vw,120px); border-radius:36px;
+          border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          font-size:60px;`;
+        b.textContent=a;
+        b.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          if(a===target){ happy(); win(); }
+          else{ beep(240,0.08,0.05); b.style.opacity=".35"; }
+        };
+        grid.appendChild(b);
+      });
+    }
+  });
+
+  // J) Memory Flip (3 pairs, easy for 4yo)
+  MiniGames.push({
+    id:"memory", name:"Memory Flip 🧠",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "MATCH 2 SAME!");
+      const icons=["🐱","🦆","⭐"];
+      let cards=[...icons,...icons];
+      // shuffle
+      for(let i=cards.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [cards[i],cards[j]]=[cards[j],cards[i]];
+      }
+
+      const grid=document.createElement("div");
+      grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%); display:grid; grid-template-columns: repeat(3, min(28vw, 120px)); gap:14px;`;
+      container.appendChild(grid);
+
+      let first=null, lock=false, matched=0;
+
+      function makeCard(icon){
+        const b=document.createElement("button");
+        b.dataset.icon=icon;
+        b.dataset.state="down";
+        b.style.cssText=`width:min(28vw,120px); height:min(28vw,120px); border-radius:36px;
+          border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          font-size:58px;`;
+        b.textContent="❔";
+        b.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          if(lock) return;
+          if(b.dataset.state!=="down") return;
+
+          b.dataset.state="up";
+          b.textContent=b.dataset.icon;
+          beep(740,0.05,0.04);
+
+          if(!first){ first=b; return; }
+
+          // second
+          if(first.dataset.icon === b.dataset.icon){
+            // match
+            matched++;
+            first.dataset.state="matched";
+            b.dataset.state="matched";
+            first=null;
+            happy();
+            if(matched>=3) win();
+          }else{
+            // mismatch
+            lock=true;
+            const a=first;
+            first=null;
+            miniSetTimeout(()=>{
+              if(sid!==miniSessionId) return;
+              a.dataset.state="down"; a.textContent="❔";
+              b.dataset.state="down"; b.textContent="❔";
+              lock=false;
+            }, 650, sid);
+          }
+        };
+        return b;
+      }
+
+      cards.forEach(icon=>grid.appendChild(makeCard(icon)));
+    }
+  });
+
+  // K) Trace The Line (follow finger)
+  MiniGames.push({
+    id:"trace", name:"Trace The Line ✍️",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "FOLLOW THE PATH!");
+      const W=container.clientWidth, H=container.clientHeight;
+
+      const cv=document.createElement("canvas");
+      cv.width=W; cv.height=H;
+      cv.style.cssText="position:absolute; inset:0; width:100%; height:100%;";
+      container.appendChild(cv);
+      const g=cv.getContext("2d");
+
+      const path = [
+        {x:W*0.18, y:H*0.78},
+        {x:W*0.30, y:H*0.56},
+        {x:W*0.48, y:H*0.62},
+        {x:W*0.64, y:H*0.40},
+        {x:W*0.82, y:H*0.48},
+      ];
+
+      function drawBase(){
+        g.clearRect(0,0,W,H);
+        g.lineCap="round";
+        g.lineJoin="round";
+        g.strokeStyle="rgba(0,0,0,.10)";
+        g.lineWidth=26;
+        g.beginPath();
+        g.moveTo(path[0].x, path[0].y);
+        for(let i=1;i<path.length;i++) g.lineTo(path[i].x, path[i].y);
+        g.stroke();
+
+        g.strokeStyle="rgba(94,194,255,.90)";
+        g.lineWidth=18;
+        g.beginPath();
+        g.moveTo(path[0].x, path[0].y);
+        for(let i=1;i<path.length;i++) g.lineTo(path[i].x, path[i].y);
+        g.stroke();
+
+        g.fillStyle="rgba(255,255,255,.95)";
+        for(const p of path){
+          g.beginPath(); g.arc(p.x,p.y,18,0,Math.PI*2); g.fill();
+        }
+        g.font="48px system-ui, Apple Color Emoji, Segoe UI Emoji";
+        g.textAlign="center"; g.textBaseline="middle";
+        g.fillText("🚗", path[0].x, path[0].y-46);
+        g.fillText("🏁", path[path.length-1].x, path[path.length-1].y-46);
+      }
+
+      drawBase();
+
+      let idx=0;
+      let down=false;
+
+      function near(a,b,dist){ return Math.hypot(a.x-b.x, a.y-b.y) < dist; }
+
+      container.onpointerdown=(e)=>{
+        if(sid!==miniSessionId) return;
+        down=true;
+        container.setPointerCapture(e.pointerId);
+      };
+      container.onpointermove=(e)=>{
+        if(!down || sid!==miniSessionId) return;
+        const r=container.getBoundingClientRect();
+        const p={x:e.clientX-r.left, y:e.clientY-r.top};
+
+        // must start near first point
+        const target = path[idx];
+        if(near(p, target, 45)){
+          beep(740,0.05,0.03);
+          idx++;
+          if(idx>=path.length){ happy(); win(); }
+        }
+      };
+      container.onpointerup=()=>{ down=false; };
+      container.onpointercancel=()=>{ down=false; };
+    }
+  });
+
+  function pickMiniGameId(){
+    return MiniGames[Math.floor(Math.random()*MiniGames.length)].id;
+  }
+
+  // ===== Missions (ALWAYS ONE HELP) =====
+  const MissionTypes = [{emoji:"🐱"},{emoji:"🍕"},{emoji:"🦆"},{emoji:"⭐"},{emoji:"🔥"},{emoji:"🎁"},{emoji:"🐸"},{emoji:"🍦"}];
+  let mission = null;
+  let activeMission = null;
+
+  function spawnMissionNow(){
+    const type = MissionTypes[Math.floor(Math.random()*MissionTypes.length)];
+    const t = toys[Math.floor(Math.random()*toys.length)];
+    mission = {
+      type,
+      x: clamp(t.x + (Math.random()*220-110), 120, world.w-120),
+      y: clamp(t.y + (Math.random()*220-110), 120, world.h-120),
+      pulse: Math.random()*10
+    };
+  }
+  spawnMissionNow();
+
+  function ensureMission(){
+    if(!activeMission && !mission) spawnMissionNow();
+  }
+
+  function hitMission(wx,wy){
+    if(!mission || activeMission) return null;
+    if(Math.hypot(wx-mission.x, wy-mission.y) < 110) return mission;
+    return null;
+  }
+
+  // ===== Confetti =====
+  let confetti=[];
+  function spawnConfettiAt(wx,wy){
+    const p = W2C(wx,wy);
+    const colors=["rgba(255,79,163,.95)","rgba(94,194,255,.95)","rgba(124,255,178,.95)","rgba(255,210,124,.95)","rgba(180,140,255,.95)"];
+    for(let i=0;i<44;i++){
+      confetti.push({
+        x:p.x, y:p.y,
+        vx:(Math.random()*560-280),
+        vy:(Math.random()*-650-240),
+        r:Math.random()*Math.PI,
+        vr:(Math.random()*10-5),
+        size:10+Math.random()*12,
+        life:1.0+Math.random()*0.5,
+        color: colors[i%colors.length]
+      });
+    }
+  }
+  function drawConfetti(dt){
+    for(const p of confetti){
+      p.vy += 820*dt;
+      p.x += p.vx*dt;
+      p.y += p.vy*dt;
+      p.r += p.vr*dt;
+      p.life -= dt;
+    }
+    confetti = confetti.filter(p=>p.life>0);
+    ctx.save();
+    for(const p of confetti){
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.r);
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.65);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ===== Draw world =====
+  function roundRect(x,y,w,h,r){
+    const rr=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rr);
+    ctx.arcTo(x+w,y+h,x,y+h,rr);
+    ctx.arcTo(x,y+h,x,y,rr);
+    ctx.arcTo(x,y,x+w,y,rr);
+    ctx.closePath();
+  }
+  function drawBubble(wx,wy,emoji,label,pulse){
+    const p=W2C(wx,wy);
+    const s=p.s;
+    const r=(62 + Math.sin(pulse)*7)*s;
+
+    ctx.save();
+    ctx.globalAlpha=0.22;
+    ctx.fillStyle="#000";
+    ctx.beginPath(); ctx.ellipse(p.x, p.y+r*0.95, r*0.95, r*0.35, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle="rgba(255,255,255,0.94)";
+    ctx.strokeStyle="rgba(0,0,0,0.12)";
+    ctx.lineWidth=6*s;
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+    ctx.font = `${Math.floor(44*s)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="#111";
+    ctx.fillText(emoji, p.x, p.y-2*s);
+
+    ctx.globalAlpha=0.78;
+    ctx.font = `${Math.floor(16*s)}px system-ui`;
+    ctx.fillText(label, p.x, p.y+r*0.85);
+    ctx.restore();
+  }
+
+  function drawTown(now){
+    ctx.fillStyle="#bff2ff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // roads grid
+    const step=220;
+    ctx.save();
+    ctx.lineCap="round";
+    ctx.strokeStyle="rgba(0,0,0,0.08)";
+    ctx.lineWidth=18*fit().s;
+
+    for(let x=0; x<=world.w; x+=step){
+      const a=W2C(x,0), b=W2C(x,world.h);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+    for(let y=0; y<=world.h; y+=step){
+      const a=W2C(0,y), b=W2C(world.w,y);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+    ctx.restore();
+
+    // toys
+    for(const t of toys){
+      const p=W2C(t.x,t.y);
+      const s=p.s;
+      const bw=t.w*s, bh=t.h*s;
+      const yOff=Math.sin(t.bounce)*10*s;
+
+      ctx.save();
+      ctx.fillStyle="rgba(255,255,255,0.90)";
+      ctx.strokeStyle="rgba(0,0,0,0.10)";
+      ctx.lineWidth=6*s;
+      roundRect(p.x-bw/2, p.y-bh/2 + yOff, bw, bh, 28*s);
+      ctx.fill(); ctx.stroke();
+
+      ctx.font = `${Math.floor(56*s)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillStyle="#111";
+      ctx.fillText(t.emoji, p.x, p.y+yOff);
+      ctx.restore();
+
+      t.bounce=Math.max(0,t.bounce-0.10);
+    }
+
+    // mini-map
+    const dpr = canvas._dpr || 1;
+    const pad = 18*dpr;
+    const mw = 170*dpr, mh = 120*dpr;
+    const x0 = canvas.width - mw - pad;
+    const y0 = pad;
+
+    ctx.save();
+    ctx.fillStyle="rgba(255,255,255,.90)";
+    ctx.strokeStyle="rgba(0,0,0,.10)";
+    ctx.lineWidth=5*dpr;
+    roundRect(x0,y0,mw,mh,20*dpr);
+    ctx.fill(); ctx.stroke();
+
+    const sx = mw / world.w;
+    const sy = mh / world.h;
+
+    ctx.font = `${Math.floor(18*dpr)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("🚗", x0 + car.x*sx, y0 + car.y*sy);
+    if(mission && !activeMission) ctx.fillText("❗", x0 + mission.x*sx, y0 + mission.y*sy);
+    ctx.restore();
+  }
+
+  function drawCar(){
+    const p=W2C(car.x,car.y);
+    const s=p.s * car.size;
+
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(car.heading);
+
+    ctx.fillStyle="rgba(0,0,0,0.18)";
+    ctx.beginPath(); ctx.ellipse(0, 34*s, 44*s, 16*s, 0, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle=car.color;
+    ctx.strokeStyle="rgba(0,0,0,0.12)";
+    ctx.lineWidth=6*s;
+    rr(-46*s, -24*s, 92*s, 58*s, 26*s);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle="rgba(255,255,255,0.55)";
+    rr(-14*s, -16*s, 36*s, 26*s, 14*s);
+    ctx.fill();
+
+    const ws=s*car.wheel;
+    ctx.fillStyle="rgba(0,0,0,0.35)";
+    ctx.beginPath(); ctx.arc(-28*s, 32*s, 10*ws, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 28*s, 32*s, 10*ws, 0, Math.PI*2); ctx.fill();
+
+    ctx.restore();
+
+    function rr(x,y,w,h,r){
+      const rr=Math.min(r,w/2,h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr,y);
+      ctx.arcTo(x+w,y,x+w,y+h,rr);
+      ctx.arcTo(x+w,y+h,x,y+h,rr);
+      ctx.arcTo(x,y+h,x,y,rr);
+      ctx.arcTo(x,y,x+w,y,rr);
+      ctx.closePath();
+    }
+  }
+
+  // ===== Main loop =====
+  let last=performance.now();
+  function loop(now){
+    const dt=Math.min(0.033,(now-last)/1000);
+    last=now;
+
+    // keep help always present when not in active mission
+    ensureMission();
+
+    cam.x = clamp(car.x, view.w/2, world.w - view.w/2);
+    cam.y = clamp(car.y, view.h/2, world.h - view.h/2);
+
+    if(activeMission){
+      const dx = activeMission.x - car.x;
+      const dy = activeMission.y - car.y;
+      const dist = Math.hypot(dx,dy);
+      const speed = 290 * clamp(dist/260, 0.35, 1);
+      const nx = dx/(dist||1), ny = dy/(dist||1);
+      const targetHeading = Math.atan2(ny,nx);
+      car.heading = lerpAngle(car.heading, targetHeading, 0.11);
+
+      const wig = Math.sin(now/160)*0.18;
+      car.x += (nx*Math.cos(wig) - ny*Math.sin(wig)) * speed * dt;
+      car.y += (ny*Math.cos(wig) + nx*Math.sin(wig)) * speed * dt;
+
+      if(dist < 32){
+        const arriveX = activeMission.x, arriveY = activeMission.y;
+        activeMission = null;
+
+        spawnConfettiAt(arriveX, arriveY);
+        happy();
+
+        face.textContent = "⭐";
+        title.textContent = "Mini-game!";
+        sub.textContent = "Win to get the next HELP bubble";
+
+        startMiniGame(pickMiniGameId(), ()=>{
+          showToast("WIN! ⭐");
+          face.textContent = "🚗";
+          title.textContent = "Find HELP!";
+          sub.textContent = "Tap the bubble (always there!)";
+          // ✅ instantly spawn next help
+          spawnMissionNow();
+        });
+      }
+    }
+
+    drawTown(now);
+
+    if(mission && !activeMission){
+      mission.pulse += 0.08;
+      drawBubble(mission.x, mission.y, mission.type.emoji, "HELP!", mission.pulse);
+    }
+
+    drawCar();
+    drawConfetti(dt);
+
+    requestAnimationFrame(loop);
+  }
+
+  // ===== Input =====
+  function onTap(clientX, clientY){
+    if(garageOverlay.classList.contains("show")) return;
+    if(miniOverlay.classList.contains("show")) return;
+
+    const dpr = canvas._dpr || 1;
+    const rect = canvas.getBoundingClientRect();
+    const px = (clientX - rect.left) * dpr;
+    const py = (clientY - rect.top)  * dpr;
+    const w = C2W(px,py);
+
+    const m = hitMission(w.x,w.y);
+    if(m){
+      activeMission = {x:m.x, y:m.y, type:m.type};
+      mission = null;           // bubble disappears immediately
+      ensureMission();          // but a new one is queued after minigame win
+      beep(760,0.05,0.04);
+      face.textContent = activeMission.type.emoji;
+      title.textContent = "Driving!";
+      sub.textContent = "Follow the car 🚗";
+      return;
+    }
+
+    const t = hitToy(w.x,w.y);
+    if(t){
+      t.bounce = 7.0;
+      beep(760,0.05,0.04);
+      return;
+    }
+
+    currentHorn().play();
+  }
+  canvas.addEventListener("pointerdown", (e)=> onTap(e.clientX, e.clientY), {passive:true});
+
+  // init
+  buildGarageUI();
+  previewDraw();
+  resize();
+  requestAnimationFrame(loop);
+})();
+</script>
 </body>
 </html>
