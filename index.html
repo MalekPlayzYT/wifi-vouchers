@@ -329,7 +329,10 @@
   }
   addEventListener("resize", resize, {passive:true});
 
-  // ===== Sound =====
+    // Load saved car settings (color/size/wheels/horn/position)
+  loadCar();
+
+// ===== Sound =====
   let audioCtx = null;
   function beep(freq=600, dur=0.08, gain=0.05, type="sine"){
     try{
@@ -399,6 +402,43 @@
     wheel: 1.0,
     hornId: "beep",
   };
+
+  // ===== Save/Load Car (persists after refresh) =====
+  const CAR_SAVE_KEY = "toyTownCarV1";
+  function clampNum(v, a, b, fallback){
+    v = Number(v);
+    if(!Number.isFinite(v)) return fallback;
+    return Math.max(a, Math.min(b, v));
+  }
+  function loadCar(){
+    try{
+      const raw = localStorage.getItem(CAR_SAVE_KEY);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      if(!data || typeof data !== "object") return;
+
+      // Only accept safe fields
+      if(typeof data.color === "string") car.color = data.color;
+      if(typeof data.hornId === "string") car.hornId = data.hornId;
+
+      car.size  = clampNum(data.size,  0.7, 1.9, car.size);
+      car.wheel = clampNum(data.wheel, 0.7, 2.2, car.wheel);
+
+      car.x = clampNum(data.x, 80, world.w-80, car.x);
+      car.y = clampNum(data.y, 80, world.h-80, car.y);
+      car.heading = clampNum(data.heading, -Math.PI*2, Math.PI*2, car.heading);
+    }catch(e){}
+  }
+  function saveCar(){
+    try{
+      const data = {
+        x: car.x, y: car.y, heading: car.heading,
+        color: car.color, size: car.size, wheel: car.wheel, hornId: car.hornId
+      };
+      localStorage.setItem(CAR_SAVE_KEY, JSON.stringify(data));
+    }catch(e){}
+  }
+
   const CarColors = ["#ff4fa3","#5ec2ff","#7cffb2","#ffd27c","#b48cff","#ffb36b","#ffffff","#222222","#ff3b30","#34c759"];
   function currentHorn(){ return Horns.find(h=>h.id===car.hornId) || Horns[0]; }
 
@@ -453,7 +493,7 @@
       const b = document.createElement("button");
       b.className="swatch";
       b.style.background = col;
-      b.onclick = ()=>{ car.color=col; previewDraw(); };
+      b.onclick = ()=>{ car.color=col; previewDraw(); saveCar(); };
       colorPicker.appendChild(b);
     });
 
@@ -463,7 +503,7 @@
       b.className="swatch";
       b.style.background="#fff";
       b.innerHTML = `<div style="font-size:28px">${h.icon}</div>`;
-      b.onclick = ()=>{ car.hornId=h.id; h.play(); previewDraw(); };
+      b.onclick = ()=>{ car.hornId=h.id; h.play(); previewDraw(); saveCar(); };
       hornPicker.appendChild(b);
     });
 
@@ -483,10 +523,11 @@
     wheelRange.value = car.wheel;
     currentHorn().play();
     previewDraw();
+    saveCar();
     showToast("WOW! ✨");
   };
-  sizeRange.oninput = ()=>{ car.size = parseFloat(sizeRange.value); previewDraw(); };
-  wheelRange.oninput = ()=>{ car.wheel = parseFloat(wheelRange.value); previewDraw(); };
+  sizeRange.oninput = ()=>{ car.size = parseFloat(sizeRange.value); previewDraw(); saveCar(); };
+  wheelRange.oninput = ()=>{ car.wheel = parseFloat(wheelRange.value); previewDraw(); saveCar(); };
   hornBtn.onclick = ()=> currentHorn().play();
 
   // ===== Town Toys =====
@@ -583,184 +624,85 @@
   }
   miniExit.onclick = ()=>{ miniOverlay.classList.remove("show"); clearMiniArea(); };
 
-  // ===== Solid Minigames (ALL reset-safe + mobile-tap friendly) =====
+  
+  // ===== Mini-games (10 unique games: educational + fun) =====
 
-  // Helper: create a tap-to-pop spawning game with lots of targets
-  function createTapSpawnGame(opts){
-    const {
-      id, name, emoji, needed=12,
-      burst=14, minSize=64, maxSize=92,
-      lifeMs=0, float=false, drift=false, bg="radial-gradient(circle at 35% 30%, #ffffffcc, #5ec2ff)",
-      label="TAP",
-      respawnWhenLow=8,
-    } = opts;
-
-    MiniGames.push({
-      id, name,
-      start(container, win, sid){
-        container.style.position="relative";
-        addMiniTip(container, `${label} ${emoji}`);
-        let count=0;
-
-        function spawnOne(){
-          const W=container.clientWidth, H=container.clientHeight;
-          const el=document.createElement("div");
-          el.textContent=emoji;
-          const x=rand(60,W-60), y=rand(140,H-80), s=rand(minSize,maxSize);
-          el.style.cssText=`
-            position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%);
-            width:${s}px; height:${s}px; border-radius:999px;
-            background:${bg};
-            border:4px solid rgba(0,0,0,.10);
-            box-shadow:0 12px 28px rgba(0,0,0,.18);
-            display:grid; place-items:center; font-size:${Math.round(s*0.32)}px;
-          `;
-          el.classList.add("tapItem");
-          container.appendChild(el);
-
-          // optional life timeout
-          if(lifeMs>0) miniSetTimeout(()=>{ if(el.isConnected) el.remove(); }, lifeMs, sid);
-
-          // optional motion
-          if(float || drift){
-            let xx=x, yy=y;
-            const vy = float ? rand(-26,-12) : rand(-10,10);
-            const vx = drift ? rand(-40,40) : 0;
-            miniRAF(()=>{
-              if(sid!==miniSessionId || !el.isConnected) return;
-              xx += vx*0.016;
-              yy += vy*0.016;
-              if(xx<60) xx=W-60;
-              if(xx>W-60) xx=60;
-              if(yy<115) yy=H-80;
-              if(yy>H-80) yy=140;
-              el.style.left = xx+"px";
-              el.style.top  = yy+"px";
-            }, sid);
-          }
-
-          el.onclick=()=>{
-            if(sid!==miniSessionId) return;
-            el.remove();
-            beep(760,0.05,0.04);
-            count++;
-            if(count>=needed) return win();
-            // keep game "busy"
-            if(container.querySelectorAll(".tapItem").length < respawnWhenLow){
-              for(let i=0;i<6;i++) miniSetTimeout(spawnOne, i*55, sid);
-            }
-          };
-        }
-
-        for(let i=0;i<burst;i++) miniSetTimeout(spawnOne, i*70, sid);
-
-        // safety: keep spawning if player is too fast
-        miniSetInterval(()=>{
-          if(sid!==miniSessionId) return;
-          const n = container.querySelectorAll(".tapItem").length;
-          if(n < respawnWhenLow) spawnOne();
-        }, 420, sid);
-      }
-    });
+  // Tiny UI helper
+  function bigButton(text){
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.style.flex = "initial";
+    b.style.minWidth = "min(28vw, 180px)";
+    b.style.fontSize = "22px";
+    b.textContent = text;
+    return b;
+  }
+  function centerBox(container){
+    const box = document.createElement("div");
+    box.style.cssText = `
+      position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
+      display:flex; flex-direction:column; align-items:center; gap:14px;
+      width:min(720px, 92vw);
+    `;
+    container.appendChild(box);
+    return box;
+  }
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr;
   }
 
-  // Helper: create a simple "tap big one" game
-  function createTapBigOneGame(id, name, goodEmoji, badEmoji){
-    MiniGames.push({
-      id, name,
-      start(container, win, sid){
-        container.style.position="relative";
-        addMiniTip(container, `TAP ${goodEmoji} (NOT ${badEmoji})`);
-        let score=0, needed=10;
-
-        function round(){
-          if(sid!==miniSessionId) return;
-          container.querySelectorAll(".choice").forEach(e=>e.remove());
-          const badIndex = Math.floor(Math.random()*6);
-
-          for(let i=0;i<6;i++){
-            const el=document.createElement("div");
-            el.className="choice";
-            el.textContent=(i===badIndex) ? badEmoji : goodEmoji;
-            el.style.cssText=`position:absolute; left:${rand(15,85)}%; top:${rand(26,88)}%;
-              transform:translate(-50%,-50%); font-size:${(i===badIndex)?78:88}px; user-select:none;`;
-            container.appendChild(el);
-            el.onclick=()=>{
-              if(sid!==miniSessionId) return;
-              if(el.textContent===goodEmoji){
-                beep(990,0.06,0.04);
-                score++;
-                if(score>=needed) win(); else round();
-              }else beep(220,0.08,0.05);
-            };
-          }
-        }
-        round();
-      }
-    });
-  }
-
-  // Keep your original strong games (re-added, fixed)
-  createTapSpawnGame({id:"balloons", name:"Pop Balloons 🎈", emoji:"🎈", needed:18, burst:22, bg:"radial-gradient(circle at 35% 30%, #ffffffcc, #ff4fa3)", label:"TAP", float:true});
-  createTapSpawnGame({id:"stars", name:"Catch Stars ⭐", emoji:"⭐", needed:14, burst:10, bg:"radial-gradient(circle at 35% 30%, #ffffffcc, #ffd27c)", label:"TAP", drift:true, respawnWhenLow:5, minSize:54, maxSize:78});
-  createTapSpawnGame({id:"coinsTap", name:"Tap Coins 🪙", emoji:"🪙", needed:16, burst:14, bg:"radial-gradient(circle at 35% 30%, #ffffffcc, #ffd60a)", label:"TAP", drift:true, respawnWhenLow:6, minSize:56, maxSize:86});
-  createTapBigOneGame("happyFace", "Tap Happy 😀 (Not 😴)", "😀", "😴");
-
-  // Press The Color (same as before)
+  // 1) Count the Animals (educational)
   MiniGames.push({
-    id:"colors", name:"Press The Color 🟥🟦🟨",
+    id:"count_animals", name:"Count the Animals 🐶",
     start(container, win, sid){
       container.style.position="relative";
-      const colors=[
-        {emoji:"🟥", bg:"#ff3b30"},
-        {emoji:"🟦", bg:"#0a84ff"},
-        {emoji:"🟨", bg:"#ffd60a"},
-        {emoji:"🟩", bg:"#34c759"},
-      ];
-      let score=0, needed=10;
-      let target = colors[Math.floor(Math.random()*colors.length)];
-      addMiniTip(container, `PRESS ${target.emoji}`);
+      const animals = ["🐶","🐱","🦆","🐸","🐻","🦊"];
+      const a = animals[Math.floor(Math.random()*animals.length)];
+      const count = 1 + Math.floor(Math.random()*5);
 
-      const row=document.createElement("div");
-      row.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-        display:flex; gap:14px; flex-wrap:wrap; justify-content:center;`;
-      container.appendChild(row);
+      addMiniTip(container, `HOW MANY ${a} ?`);
 
-      function setNewTarget(){
-        target = colors[Math.floor(Math.random()*colors.length)];
-        container.firstChild.textContent = `PRESS ${target.emoji}`;
+      const box = centerBox(container);
+
+      const show = document.createElement("div");
+      show.style.cssText = "font-size:70px; text-align:center; line-height:1.15; user-select:none;";
+      show.textContent = Array(count).fill(a).join(" ");
+      box.appendChild(show);
+
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; gap:12px; flex-wrap:wrap; justify-content:center;";
+      box.appendChild(row);
+
+      const options = shuffle([count, clamp(count-1,1,5), clamp(count+1,1,5)]).filter((v,i,arr)=>arr.indexOf(v)===i);
+      while(options.length < 3){
+        const v = 1 + Math.floor(Math.random()*5);
+        if(!options.includes(v)) options.push(v);
       }
+      shuffle(options);
 
-      colors.forEach(c=>{
-        const b=document.createElement("button");
-        b.style.cssText=`
-          width: min(42vw, 150px); height:min(42vw, 150px);
-          border-radius:44px; border:4px solid rgba(0,0,0,.10);
-          box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          background:${c.bg}; font-size:56px; cursor:pointer;
-        `;
-        b.textContent=c.emoji;
-        b.onclick=()=>{
+      options.forEach(v=>{
+        const b = bigButton(String(v));
+        b.onclick = ()=>{
           if(sid!==miniSessionId) return;
-          if(c.emoji===target.emoji){
-            beep(990,0.06,0.04);
-            score++;
-            if(score>=needed) win(); else setNewTarget();
-          }else beep(220,0.08,0.05);
+          if(v===count){ happy(); win(); }
+          else{ beep(240,0.08,0.05); b.style.opacity=".45"; }
         };
         row.appendChild(b);
       });
     }
   });
 
-  // Match Shapes (drag)
+  // 2) Match Shapes (drag)  ✅ based on your existing "match" but simplified & more forgiving
   MiniGames.push({
-    id:"match", name:"Match Shapes 🧩",
+    id:"match_shapes", name:"Match Shapes 🧩",
     start(container, win, sid){
       container.style.position="relative";
       const W=container.clientWidth, H=container.clientHeight;
-      addMiniTip(container, "DRAG 🧩 TO MATCH");
-      let done=0;
+      addMiniTip(container, "DRAG TO MATCH!");
 
       const targets = [
         {emoji:"🟥", x: W*0.78, y: H*0.34},
@@ -773,14 +715,16 @@
         {emoji:"🟨", x: W*0.24, y: H*0.80},
       ];
 
+      let done=0;
+
       for(const t of targets){
         const el=document.createElement("div");
         el.textContent=t.emoji;
         el.style.cssText=`
           position:absolute; left:${t.x}px; top:${t.y}px; transform:translate(-50%,-50%);
-          width:104px; height:104px; border-radius: 30px;
+          width:116px; height:116px; border-radius: 34px;
           background:#fff; border:6px dashed rgba(0,0,0,.18);
-          display:grid; place-items:center; font-size:50px;
+          display:grid; place-items:center; font-size:54px;
         `;
         container.appendChild(el);
       }
@@ -790,10 +734,10 @@
         el.textContent=p.emoji;
         el.style.cssText=`
           position:absolute; left:${p.x}px; top:${p.y}px; transform:translate(-50%,-50%);
-          width:104px; height:104px; border-radius: 30px;
+          width:116px; height:116px; border-radius: 34px;
           background:#fff; border:6px solid rgba(0,0,0,.12);
           box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          display:grid; place-items:center; font-size:50px;
+          display:grid; place-items:center; font-size:54px;
           touch-action:none; user-select:none;
         `;
         container.appendChild(el);
@@ -828,7 +772,7 @@
             if(t.emoji!==p.emoji) continue;
             const tx=cr.left + t.x;
             const ty=cr.top  + t.y;
-            if(Math.hypot(ex-tx, ey-ty) < 64){
+            if(Math.hypot(ex-tx, ey-ty) < 82){ // more forgiving for kids
               el.style.left=`${t.x}px`;
               el.style.top =`${t.y}px`;
               el.onpointerdown=el.onpointermove=el.onpointerup=null;
@@ -843,13 +787,449 @@
     }
   });
 
-  // Car Wash
+  // 3) Tap the Letter (educational)
   MiniGames.push({
-    id:"wash", name:"Car Wash 🧼",
+    id:"tap_letter", name:"Tap the Letter 🔤",
+    start(container, win, sid){
+      container.style.position="relative";
+      const letters = "ABCDEF".split("");
+      const target = letters[Math.floor(Math.random()*letters.length)];
+      addMiniTip(container, `TAP "${target}"`);
+
+      let score=0, needed=8;
+
+      const grid=document.createElement("div");
+      grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
+        display:grid; grid-template-columns: repeat(3, min(28vw, 140px)); gap:14px;`;
+      container.appendChild(grid);
+
+      function newRound(){
+        if(sid!==miniSessionId) return;
+        grid.innerHTML="";
+        const picks=[];
+        picks.push(target);
+        while(picks.length<9) picks.push(letters[Math.floor(Math.random()*letters.length)]);
+        shuffle(picks);
+
+        picks.forEach(ch=>{
+          const b=document.createElement("button");
+          b.style.cssText=`width:min(28vw,140px); height:min(28vw,140px); border-radius:36px;
+            border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
+            font-weight:1000; font-size:56px;`;
+          b.textContent=ch;
+          b.onclick=()=>{
+            if(sid!==miniSessionId) return;
+            if(ch===target){
+              beep(990,0.06,0.04);
+              score++;
+              if(score>=needed) { happy(); win(); }
+              else newRound();
+            }else{
+              beep(240,0.08,0.05);
+              b.style.opacity=".35";
+            }
+          };
+          grid.appendChild(b);
+        });
+      }
+      newRound();
+    }
+  });
+
+  // 4) Pattern Builder (educational logic)
+  MiniGames.push({
+    id:"pattern_builder", name:"Pattern Builder 🔴🟡",
+    start(container, win, sid){
+      container.style.position="relative";
+      const A = {emoji:"🔴", label:"RED"};
+      const B = {emoji:"🟡", label:"YELLOW"};
+      const C = {emoji:"🔵", label:"BLUE"};
+      const patterns = [
+        {seq:[A,B,A,B], next:A},
+        {seq:[A,A,B,B], next:A},
+        {seq:[A,B,B,A], next:B},
+        {seq:[A,C,A,C], next:A},
+        {seq:[B,C,B,C], next:B},
+      ];
+      const p = patterns[Math.floor(Math.random()*patterns.length)];
+      addMiniTip(container, "WHAT COMES NEXT?");
+
+      const box = centerBox(container);
+
+      const seq = document.createElement("div");
+      seq.style.cssText = "font-size:64px; text-align:center; user-select:none;";
+      seq.textContent = p.seq.map(x=>x.emoji).join("  ") + "  ❓";
+      box.appendChild(seq);
+
+      const row=document.createElement("div");
+      row.style.cssText="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;";
+      box.appendChild(row);
+
+      const options = shuffle([p.next, A, B, C].filter((v,i,arr)=>arr.findIndex(x=>x.emoji===v.emoji)===i)).slice(0,3);
+      options.forEach(opt=>{
+        const b = document.createElement("button");
+        b.style.cssText=`width:min(28vw,160px); height:110px; border-radius:34px;
+          border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          font-size:54px; font-weight:1000;`;
+        b.textContent = opt.emoji;
+        b.onclick=()=>{
+          if(sid!==miniSessionId) return;
+          if(opt.emoji===p.next.emoji){ happy(); win(); }
+          else{ beep(240,0.08,0.05); b.style.opacity=".45"; }
+        };
+        row.appendChild(b);
+      });
+    }
+  });
+
+  // 5) Color Sort (educational drag)
+  MiniGames.push({
+    id:"color_sort", name:"Color Sort 🎨",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "DRAG INTO THE RIGHT BIN!");
+
+      const W=container.clientWidth, H=container.clientHeight;
+
+      const bins = [
+        {name:"RED",  color:"#ff3b30", x: W*0.22, y: H*0.72, accepts:["🍎","🍓","🍒"]},
+        {name:"YEL",  color:"#ffd60a", x: W*0.50, y: H*0.72, accepts:["🍌","🍋","🌟"]},
+        {name:"GREEN",color:"#34c759", x: W*0.78, y: H*0.72, accepts:["🥝","🍐","🐸"]},
+      ];
+
+      // bins UI
+      bins.forEach(b=>{
+        const el=document.createElement("div");
+        el.style.cssText=`
+          position:absolute; left:${b.x}px; top:${b.y}px; transform:translate(-50%,-50%);
+          width:min(26vw, 190px); height:160px;
+          border-radius:34px; border:5px solid rgba(0,0,0,.10);
+          background:${b.color}; box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          display:flex; flex-direction:column; justify-content:center; align-items:center;
+          font-weight:1000; color:rgba(0,0,0,.65);
+        `;
+        el.innerHTML = `<div style="font-size:18px; letter-spacing:1px;">${b.name}</div><div style="font-size:40px; opacity:.9;">🧺</div>`;
+        container.appendChild(el);
+      });
+
+      // items
+      const items = shuffle(["🍎","🍓","🍒","🍌","🍋","🌟","🥝","🍐","🐸"]).slice(0,6);
+      let placed=0;
+
+      function makeItem(emoji, x, y){
+        const el=document.createElement("div");
+        el.textContent=emoji;
+        el.style.cssText=`
+          position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%);
+          width:104px; height:104px; border-radius:34px;
+          background:#fff; border:6px solid rgba(0,0,0,.12);
+          box-shadow: 0 14px 40px rgba(0,0,0,.20);
+          display:grid; place-items:center; font-size:56px;
+          touch-action:none; user-select:none;
+        `;
+        container.appendChild(el);
+
+        let dragging=false, offX=0, offY=0;
+
+        el.onpointerdown=(e)=>{
+          if(sid!==miniSessionId) return;
+          dragging=true;
+          el.setPointerCapture(e.pointerId);
+          const r=el.getBoundingClientRect();
+          offX = e.clientX - (r.left + r.width/2);
+          offY = e.clientY - (r.top  + r.height/2);
+          beep(760,0.05,0.04);
+        };
+        el.onpointermove=(e)=>{
+          if(!dragging || sid!==miniSessionId) return;
+          const cr=container.getBoundingClientRect();
+          el.style.left = `${e.clientX - cr.left - offX}px`;
+          el.style.top  = `${e.clientY - cr.top  - offY}px`;
+        };
+        el.onpointerup=()=>{
+          if(sid!==miniSessionId) return;
+          dragging=false;
+
+          const er=el.getBoundingClientRect();
+          const ex=er.left + er.width/2;
+          const ey=er.top  + er.height/2;
+          const cr=container.getBoundingClientRect();
+
+          let ok=false;
+          for(const b of bins){
+            const tx=cr.left + b.x;
+            const ty=cr.top  + b.y;
+            if(Math.hypot(ex-tx, ey-ty) < 110){
+              ok = b.accepts.includes(emoji);
+              if(ok){
+                el.style.left = `${b.x}px`;
+                el.style.top  = `${b.y-70}px`;
+                el.onpointerdown=el.onpointermove=el.onpointerup=null;
+                placed++;
+                happy();
+                if(placed>=items.length) win();
+              }else{
+                beep(240,0.08,0.05);
+              }
+              break;
+            }
+          }
+        };
+      }
+
+      items.forEach((em,i)=>{
+        makeItem(em, W*(0.24 + (i%3)*0.26), H*(0.30 + Math.floor(i/3)*0.22));
+      });
+    }
+  });
+
+  // 6) Drive to the Star (fun control)
+  MiniGames.push({
+    id:"drive_star", name:"Drive to the Star 🚗⭐",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "DRAG THE CAR TO ⭐");
+
+      const W=container.clientWidth, H=container.clientHeight;
+
+      // obstacles (soft)
+      const walls = [
+        {x:W*0.50, y:H*0.36, w:W*0.62, h:26},
+        {x:W*0.50, y:H*0.58, w:W*0.62, h:26},
+      ];
+
+      const star = document.createElement("div");
+      star.textContent="⭐";
+      star.style.cssText=`position:absolute; left:82%; top:50%;
+        transform:translate(-50%,-50%); font-size:84px; user-select:none;
+        filter: drop-shadow(0 18px 30px rgba(0,0,0,.25));`;
+      container.appendChild(star);
+
+      walls.forEach(w=>{
+        const el=document.createElement("div");
+        el.style.cssText=`position:absolute; left:${w.x}px; top:${w.y}px; transform:translate(-50%,-50%);
+          width:${w.w}px; height:${w.h}px; border-radius:18px;
+          background:rgba(0,0,0,.10); border:4px solid rgba(0,0,0,.08);`;
+        container.appendChild(el);
+      });
+
+      const carEl=document.createElement("div");
+      carEl.textContent="🚗";
+      let cx=W*0.18, cy=H*0.50;
+      carEl.style.cssText=`position:absolute; left:${cx}px; top:${cy}px; transform:translate(-50%,-50%);
+        font-size:86px; user-select:none; touch-action:none;
+        filter: drop-shadow(0 18px 30px rgba(0,0,0,.25));`;
+      container.appendChild(carEl);
+
+      function collides(x,y){
+        const r=44;
+        for(const w of walls){
+          const dx = Math.abs(x-w.x);
+          const dy = Math.abs(y-w.y);
+          if(dx < (w.w/2 + r) && dy < (w.h/2 + r)) return true;
+        }
+        return false;
+      }
+      function starHit(x,y){
+        const sx = W*0.82, sy = H*0.50;
+        return Math.hypot(x-sx, y-sy) < 70;
+      }
+
+      let dragging=false, offX=0, offY=0;
+      carEl.onpointerdown=(e)=>{
+        if(sid!==miniSessionId) return;
+        dragging=true;
+        carEl.setPointerCapture(e.pointerId);
+        const r=carEl.getBoundingClientRect();
+        offX = e.clientX - (r.left + r.width/2);
+        offY = e.clientY - (r.top  + r.height/2);
+        beep(760,0.05,0.04);
+      };
+      carEl.onpointermove=(e)=>{
+        if(!dragging || sid!==miniSessionId) return;
+        const cr=container.getBoundingClientRect();
+        let nx = e.clientX - cr.left - offX;
+        let ny = e.clientY - cr.top  - offY;
+        nx = clamp(nx, 70, W-70);
+        ny = clamp(ny, 140, H-80);
+
+        // if colliding, nudge back toward old position (soft walls)
+        if(collides(nx,ny)){
+          beep(220,0.05,0.03);
+          nx = (nx + cx*2)/3;
+          ny = (ny + cy*2)/3;
+        }
+        cx=nx; cy=ny;
+        carEl.style.left=cx+"px";
+        carEl.style.top=cy+"px";
+
+        if(starHit(cx,cy)){ happy(); win(); }
+      };
+      carEl.onpointerup=()=>{ dragging=false; };
+      carEl.onpointercancel=()=>{ dragging=false; };
+    }
+  });
+
+  // 7) Catch the Falling Toy (timing)
+  MiniGames.push({
+    id:"catch_toy", name:"Catch the Toys 🧺",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "MOVE 🧺 AND CATCH!");
+
+      const W=container.clientWidth, H=container.clientHeight;
+
+      const basket=document.createElement("div");
+      let bx=W*0.5;
+      basket.textContent="🧺";
+      basket.style.cssText=`position:absolute; left:${bx}px; top:${H-90}px; transform:translate(-50%,-50%);
+        font-size:86px; user-select:none;`;
+      container.appendChild(basket);
+
+      const toys=["🧸","🧩","🦆","⭐","🍦"];
+      let falling=[];
+      let caught=0, needed=5;
+
+      const meter=document.createElement("div");
+      meter.style.cssText=`position:absolute; left:50%; top:72px; transform:translateX(-50%);
+        font-weight:1000; font-size:22px; background:#fff; border:4px solid rgba(0,0,0,.10);
+        padding:8px 12px; border-radius:22px; box-shadow: 0 14px 40px rgba(0,0,0,.20);`;
+      meter.textContent = `Caught: ${caught}/${needed}`;
+      container.appendChild(meter);
+
+      function spawn(){
+        const el=document.createElement("div");
+        el.textContent=toys[Math.floor(Math.random()*toys.length)];
+        const x=rand(70, W-70);
+        const y=110;
+        el.style.cssText=`position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%);
+          font-size:70px; user-select:none;`;
+        container.appendChild(el);
+        falling.push({el, x, y, vy: rand(160,240)});
+      }
+
+      // spawn slowly
+      miniSetInterval(()=>{ if(sid!==miniSessionId) return; if(falling.length<4) spawn(); }, 520, sid);
+
+      // move basket with pointer
+      container.onpointerdown=(e)=>{ if(sid!==miniSessionId) return; const r=container.getBoundingClientRect(); bx = clamp(e.clientX-r.left, 70, W-70); basket.style.left=bx+"px"; };
+      container.onpointermove=(e)=>{
+        if(sid!==miniSessionId) return;
+        if(e.buttons===0) return;
+        const r=container.getBoundingClientRect();
+        bx = clamp(e.clientX-r.left, 70, W-70);
+        basket.style.left=bx+"px";
+      };
+
+      miniRAF((t)=>{
+        if(sid!==miniSessionId) return;
+        const dt=0.016;
+        const basketY=H-90;
+        for(const f of falling){
+          f.y += f.vy*dt;
+          f.el.style.top = f.y+"px";
+
+          // catch check
+          if(Math.abs(f.x-bx) < 70 && Math.abs(f.y-basketY) < 60){
+            f.el.remove();
+            f.dead=true;
+            caught++;
+            happy();
+            meter.textContent = `Caught: ${caught}/${needed}`;
+            if(caught>=needed) win();
+          }
+          // missed
+          if(f.y > H+60){
+            f.el.remove();
+            f.dead=true;
+            beep(240,0.06,0.04);
+          }
+        }
+        falling = falling.filter(f=>!f.dead);
+      }, sid);
+    }
+  });
+
+  // 8) Stop the Bar (timing)
+  MiniGames.push({
+    id:"stop_bar", name:"Stop the Bar 🟩",
+    start(container, win, sid){
+      container.style.position="relative";
+      addMiniTip(container, "TAP IN THE GREEN!");
+
+      const box = centerBox(container);
+
+      const track=document.createElement("div");
+      track.style.cssText=`position:relative; width:min(720px, 92vw); height:64px;
+        border-radius:26px; border:5px solid rgba(0,0,0,.10);
+        background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20); overflow:hidden;`;
+      box.appendChild(track);
+
+      // green zone
+      const good=document.createElement("div");
+      good.style.cssText=`position:absolute; left:62%; top:0; width:20%; height:100%;
+        background: rgba(52,199,89,.50);`;
+      track.appendChild(good);
+
+      // moving bar
+      const bar=document.createElement("div");
+      bar.style.cssText=`position:absolute; left:0%; top:0; width:12%; height:100%;
+        background: rgba(94,194,255,.65);`;
+      track.appendChild(bar);
+
+      const tap = bigButton("TAP ✋");
+      tap.style.minWidth="min(60vw, 360px)";
+      box.appendChild(tap);
+
+      let x=0, dir=1;
+      let rounds=0, needed=3;
+
+      const info=document.createElement("div");
+      info.style.cssText="font-weight:1000; font-size:20px; opacity:.75; text-align:center;";
+      info.textContent=`Hits: ${rounds}/${needed}`;
+      box.appendChild(info);
+
+      function inGreen(){
+        const left = x;           // 0..88
+        const right = x + 12;
+        return (left >= 62 && right <= 82);
+      }
+
+      miniRAF(()=>{
+        if(sid!==miniSessionId) return;
+        x += dir*1.3;
+        if(x<=0){ x=0; dir=1; }
+        if(x>=88){ x=88; dir=-1; }
+        bar.style.left = x+"%";
+      }, sid);
+
+      tap.onclick=()=>{
+        if(sid!==miniSessionId) return;
+        if(inGreen()){
+          rounds++;
+          happy();
+          info.textContent=`Hits: ${rounds}/${needed}`;
+          if(rounds>=needed) win();
+        }else{
+          beep(240,0.08,0.05);
+        }
+      };
+    }
+  });
+
+  // 9) Car Wash (interaction) ✅ your existing wash, kept
+  MiniGames.push({
+    id:"car_wash", name:"Car Wash 🧼",
     start(container, win, sid){
       container.style.position="relative";
       addMiniTip(container,"RUB 🧽 CLEAN!");
       const W=container.clientWidth, H=container.clientHeight;
+
+      const meter=document.createElement("div");
+      meter.style.cssText=`position:absolute; left:50%; top:72px; transform:translateX(-50%);
+        font-weight:1000; font-size:22px; background:#fff; border:4px solid rgba(0,0,0,.10);
+        padding:8px 12px; border-radius:22px; box-shadow: 0 14px 40px rgba(0,0,0,.20);`;
+      container.appendChild(meter);
 
       const carEl=document.createElement("div");
       carEl.textContent="🚗";
@@ -874,6 +1254,7 @@
         wctx.beginPath(); wctx.arc(x,y,50,0,Math.PI*2); wctx.fill();
         wctx.restore();
         cleaned += 2.2;
+        meter.textContent = `Clean: ${Math.min(100, Math.floor(cleaned/2))}%`;
         if(cleaned > 190) win();
       }
 
@@ -893,59 +1274,19 @@
     }
   });
 
-  // Find The Animal
+  // 10) Memory Flip (easy) ✅ simplified (3 pairs)
   MiniGames.push({
-    id:"find", name:"Find The Animal 👀",
-    start(container, win, sid){
-      container.style.position="relative";
-      const animals=["🐱","🐶","🦊","🐸","🐵","🐯","🐼","🦁"];
-      const target=animals[Math.floor(Math.random()*animals.length)];
-      addMiniTip(container, `FIND ${target}`);
-
-      const grid=document.createElement("div");
-      grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-        display:grid; grid-template-columns: repeat(3, min(30vw, 120px)); gap:14px;`;
-      container.appendChild(grid);
-
-      const picks=[target];
-      while(picks.length<9) picks.push(animals[Math.floor(Math.random()*animals.length)]);
-      for(let i=picks.length-1;i>0;i--){
-        const j=Math.floor(Math.random()*(i+1));
-        [picks[i],picks[j]]=[picks[j],picks[i]];
-      }
-
-      picks.forEach(a=>{
-        const b=document.createElement("button");
-        b.style.cssText=`width:min(30vw,120px); height:min(30vw,120px); border-radius:36px;
-          border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          font-size:60px;`;
-        b.textContent=a;
-        b.onclick=()=>{
-          if(sid!==miniSessionId) return;
-          if(a===target){ happy(); win(); }
-          else{ beep(240,0.08,0.05); b.style.opacity=".35"; }
-        };
-        grid.appendChild(b);
-      });
-    }
-  });
-
-  // Memory Flip
-  MiniGames.push({
-    id:"memory", name:"Memory Flip 🧠",
+    id:"memory_flip", name:"Memory Flip 🧠",
     start(container, win, sid){
       container.style.position="relative";
       addMiniTip(container, "MATCH 2 SAME!");
       const icons=["🐱","🦆","⭐"];
       let cards=[...icons,...icons];
-      for(let i=cards.length-1;i>0;i--){
-        const j=Math.floor(Math.random()*(i+1));
-        [cards[i],cards[j]]=[cards[j],cards[i]];
-      }
+      shuffle(cards);
 
       const grid=document.createElement("div");
       grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-        display:grid; grid-template-columns: repeat(3, min(28vw, 120px)); gap:14px;`;
+        display:grid; grid-template-columns: repeat(3, min(28vw, 140px)); gap:14px;`;
       container.appendChild(grid);
 
       let first=null, lock=false, matched=0;
@@ -954,9 +1295,9 @@
         const b=document.createElement("button");
         b.dataset.icon=icon;
         b.dataset.state="down";
-        b.style.cssText=`width:min(28vw,120px); height:min(28vw,120px); border-radius:36px;
+        b.style.cssText=`width:min(28vw,140px); height:min(28vw,140px); border-radius:36px;
           border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          font-size:58px;`;
+          font-size:64px;`;
         b.textContent="❔";
         b.onclick=()=>{
           if(sid!==miniSessionId) return;
@@ -994,122 +1335,8 @@
     }
   });
 
-  // Trace The Line
-  MiniGames.push({
-    id:"trace", name:"Trace The Line ✍️",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container, "FOLLOW THE PATH!");
-      const W=container.clientWidth, H=container.clientHeight;
 
-      const cv=document.createElement("canvas");
-      cv.width=W; cv.height=H;
-      cv.style.cssText="position:absolute; inset:0; width:100%; height:100%;";
-      container.appendChild(cv);
-      const g=cv.getContext("2d");
-
-      const path = [
-        {x:W*0.18, y:H*0.78},
-        {x:W*0.30, y:H*0.56},
-        {x:W*0.48, y:H*0.62},
-        {x:W*0.64, y:H*0.40},
-        {x:W*0.82, y:H*0.48},
-      ];
-
-      g.lineCap="round"; g.lineJoin="round";
-      g.strokeStyle="rgba(0,0,0,.10)"; g.lineWidth=26;
-      g.beginPath(); g.moveTo(path[0].x, path[0].y); for(let i=1;i<path.length;i++) g.lineTo(path[i].x, path[i].y); g.stroke();
-      g.strokeStyle="rgba(94,194,255,.90)"; g.lineWidth=18;
-      g.beginPath(); g.moveTo(path[0].x, path[0].y); for(let i=1;i<path.length;i++) g.lineTo(path[i].x, path[i].y); g.stroke();
-      g.fillStyle="rgba(255,255,255,.95)";
-      for(const p of path){ g.beginPath(); g.arc(p.x,p.y,18,0,Math.PI*2); g.fill(); }
-      g.font="48px system-ui, Apple Color Emoji, Segoe UI Emoji"; g.textAlign="center"; g.textBaseline="middle";
-      g.fillText("🚗", path[0].x, path[0].y-46);
-      g.fillText("🏁", path[path.length-1].x, path[path.length-1].y-46);
-
-      let idx=0; let down=false;
-      const near=(a,b,dist)=>Math.hypot(a.x-b.x, a.y-b.y) < dist;
-
-      container.onpointerdown=(e)=>{ if(sid!==miniSessionId) return; down=true; container.setPointerCapture(e.pointerId); };
-      container.onpointermove=(e)=>{
-        if(!down || sid!==miniSessionId) return;
-        const r=container.getBoundingClientRect();
-        const p={x:e.clientX-r.left, y:e.clientY-r.top};
-        const target = path[idx];
-        if(near(p, target, 45)){
-          beep(740,0.05,0.03);
-          idx++;
-          if(idx>=path.length){ happy(); win(); }
-        }
-      };
-      container.onpointerup=()=>{ down=false; };
-      container.onpointercancel=()=>{ down=false; };
-    }
-  });
-
-  // --- 50 NEW MINI-GAMES (generated from safe templates) ---
-  const tapSet = [
-    ["tap_apples","Tap Apples 🍎","🍎",16],["tap_bananas","Tap Bananas 🍌","🍌",14],["tap_grapes","Tap Grapes 🍇","🍇",16],
-    ["tap_cherries","Tap Cherries 🍒","🍒",14],["tap_straw","Tap Strawberries 🍓","🍓",14],["tap_pear","Tap Pears 🍐","🍐",14],
-    ["tap_peach","Tap Peaches 🍑","🍑",14],["tap_water","Tap Watermelon 🍉","🍉",14],["tap_lemon","Tap Lemons 🍋","🍋",14],
-    ["tap_candy","Tap Candy 🍬","🍬",18],["tap_cookie","Tap Cookies 🍪","🍪",16],["tap_donut","Tap Donuts 🍩","🍩",14],
-    ["tap_ice","Tap Ice Cream 🍦","🍦",14],["tap_pizza","Tap Pizza 🍕","🍕",14],["tap_burger","Tap Burgers 🍔","🍔",14],
-    ["tap_fries","Tap Fries 🍟","🍟",14],["tap_ball","Tap Balls ⚽","⚽",16],["tap_basket","Tap Basketballs 🏀","🏀",16],
-    ["tap_tennis","Tap Tennis 🎾","🎾",16],["tap_baseball","Tap Baseball ⚾","⚾",16],["tap_rocket","Tap Rockets 🚀","🚀",12],
-    ["tap_plane","Tap Planes ✈️","✈️",12],["tap_train","Tap Trains 🚂","🚂",12],["tap_truck","Tap Trucks 🚚","🚚",12],
-    ["tap_boat","Tap Boats 🚤","🚤",12],["tap_fish","Tap Fish 🐟","🐟",14],["tap_turtle","Tap Turtles 🐢","🐢",12],
-    ["tap_bird","Tap Birds 🐦","🐦",12],["tap_cat","Tap Cats 🐱","🐱",12],["tap_dog","Tap Dogs 🐶","🐶",12],
-    ["tap_frog","Tap Frogs 🐸","🐸",12],["tap_duck2","Tap Ducks 🦆","🦆",12],["tap_star2","Tap Sparkles ✨","✨",16],
-    ["tap_heart","Tap Hearts 💖","💖",16],["tap_gift","Tap Gifts 🎁","🎁",14],["tap_light","Tap Lights 💡","💡",14],
-    ["tap_music","Tap Notes 🎵","🎵",16],["tap_cloud","Tap Clouds ☁️","☁️",12],["tap_sun","Tap Suns ☀️","☀️",12],
-    ["tap_moon","Tap Moons 🌙","🌙",12],["tap_planet","Tap Planets 🪐","🪐",12],["tap_rainbow","Tap Rainbows 🌈","🌈",12],
-    ["tap_flower","Tap Flowers 🌼","🌼",14],["tap_tree","Tap Trees 🌳","🌳",12],["tap_car","Tap Cars 🚗","🚗",14],
-    ["tap_key","Tap Keys 🔑","🔑",14],["tap_bell","Tap Bells 🔔","🔔",14],["tap_robot","Tap Robots 🤖","🤖",12],
-    ["tap_fire","Tap Fire 🔥","🔥",12],["tap_snow","Tap Snow ❄️","❄️",12],
-  ];
-
-  // Make 50 tap-spawn games with small variations so they feel different
-  tapSet.forEach((t, idx)=>{
-    const [id,name,emoji,needed] = t;
-    const float = idx % 3 === 0;
-    const drift = idx % 3 === 1;
-    const life  = idx % 4 === 0 ? 1400 : 0;
-    const bg    = idx % 5 === 0
-      ? "radial-gradient(circle at 35% 30%, #ffffffcc, #5ec2ff)"
-      : idx % 5 === 1
-        ? "radial-gradient(circle at 35% 30%, #ffffffcc, #7cffb2)"
-        : idx % 5 === 2
-          ? "radial-gradient(circle at 35% 30%, #ffffffcc, #ffd27c)"
-          : idx % 5 === 3
-            ? "radial-gradient(circle at 35% 30%, #ffffffcc, #b48cff)"
-            : "radial-gradient(circle at 35% 30%, #ffffffcc, #ff4fa3)";
-    createTapSpawnGame({
-      id, name, emoji, needed,
-      burst: 18,
-      minSize: 66, maxSize: 96,
-      lifeMs: life,
-      float, drift,
-      bg,
-      label: "TAP",
-      respawnWhenLow: 9,
-    });
-  });
-
-  // Extra variety games (10 more) -> still safe templates
-  createTapBigOneGame("good_bad_1","Tap Stars ⭐ (Not 💣)","⭐","💣");
-  createTapBigOneGame("good_bad_2","Tap Candy 🍬 (Not 🌶️)","🍬","🌶️");
-  createTapBigOneGame("good_bad_3","Tap Fish 🐟 (Not 🦈)","🐟","🦈");
-  createTapBigOneGame("good_bad_4","Tap Sun ☀️ (Not 🌧️)","☀️","🌧️");
-  createTapBigOneGame("good_bad_5","Tap Hearts 💖 (Not 💔)","💖","💔");
-  createTapBigOneGame("good_bad_6","Tap Cats 🐱 (Not 🐍)","🐱","🐍");
-  createTapBigOneGame("good_bad_7","Tap Cars 🚗 (Not 🚧)","🚗","🚧");
-  createTapBigOneGame("good_bad_8","Tap Gifts 🎁 (Not 🗑️)","🎁","🗑️");
-  createTapBigOneGame("good_bad_9","Tap Rockets 🚀 (Not 🪨)","🚀","🪨");
-  createTapBigOneGame("good_bad_10","Tap Snow ❄️ (Not 🔥)","❄️","🔥");
-
-  // Total: original core games + 50 tap games + 10 extra = 60+ mini-games
-
-  function pickMiniGameId(){
+function pickMiniGameId(){
     return MiniGames[Math.floor(Math.random()*MiniGames.length)].id;
   }
 
@@ -1118,13 +1345,25 @@
   let mission = null;
   let activeMission = null;
 
+  
   function spawnMissionNow(){
+    // Always spawn HELP within the current camera view around the car,
+    // so the bubble is ALWAYS on-screen (no off-screen hunting).
     const type = MissionTypes[Math.floor(Math.random()*MissionTypes.length)];
-    const t = toys[Math.floor(Math.random()*toys.length)];
+
+    const margin = 160;
+    const halfW = view.w/2;
+    const halfH = view.h/2;
+
+    const minX = clamp(car.x - halfW + margin, 120, world.w-120);
+    const maxX = clamp(car.x + halfW - margin, 120, world.w-120);
+    const minY = clamp(car.y - halfH + margin, 120, world.h-120);
+    const maxY = clamp(car.y + halfH - margin, 120, world.h-120);
+
     mission = {
       type,
-      x: clamp(t.x + (Math.random()*220-110), 120, world.w-120),
-      y: clamp(t.y + (Math.random()*220-110), 120, world.h-120),
+      x: rand(Math.min(minX,maxX), Math.max(minX,maxX)),
+      y: rand(Math.min(minY,maxY), Math.max(minY,maxY)),
       pulse: Math.random()*10
     };
   }
@@ -1332,6 +1571,10 @@
   function loop(now){
     const dt=Math.min(0.033,(now-last)/1000);
     last=now;
+    // Save car position occasionally (so refresh keeps progress)
+    if(!loop._lastSave) loop._lastSave = 0;
+    if(now - loop._lastSave > 1000){ saveCar(); loop._lastSave = now; }
+
 
     // keep help always present when not in active mission
     ensureMission();
