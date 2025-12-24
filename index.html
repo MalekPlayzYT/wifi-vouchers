@@ -186,91 +186,6 @@
     .tile{min-width: 200px}
   }
 
-
-  /* ===== Mobile-first improvements ===== */
-  #hud{
-    position:absolute;
-    left:12px; right:12px; bottom:12px;
-    display:none;
-    gap:10px;
-    align-items:flex-end;
-    justify-content:space-between;
-    pointer-events:none;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  #hudStatus{
-    pointer-events:auto;
-    display:flex; align-items:center; gap:10px;
-    padding:10px 12px;
-    border-radius:24px;
-    background: rgba(255,255,255,.92);
-    border:4px solid rgba(0,0,0,.10);
-    box-shadow: 0 14px 40px rgba(0,0,0,.22);
-    backdrop-filter: blur(6px);
-    min-width: 0;
-    max-width: 64vw;
-  }
-  #hudFace{
-    width:44px;height:44px;border-radius:16px;
-    display:grid; place-items:center; font-size:26px;
-    background:#fff;border:4px solid rgba(0,0,0,.08);
-    box-shadow: inset 0 -8px 0 rgba(0,0,0,.05);
-    flex:0 0 auto;
-  }
-  #hudText{min-width:0}
-  #hudTitle{
-    font-weight:1000;
-    font-size:14px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  #hudSub{
-    font-weight:900;
-    font-size:12px;
-    opacity:.72;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  #hudBtns{
-    pointer-events:auto;
-    display:flex;
-    gap:10px;
-  }
-  .hudBtn{
-    width:64px;height:64px;border-radius:24px;
-    border:4px solid rgba(0,0,0,.10);
-    background:#fff;
-    box-shadow: 0 14px 40px rgba(0,0,0,.22);
-    display:grid; place-items:center;
-    font-size:30px;
-    cursor:pointer; -webkit-tap-highlight-color:transparent;
-  }
-  .hudBtn:active{transform: translateY(1px) scale(.99);}
-
-  /* Landscape phone: make stage FULL and use HUD instead of top bar */
-  @media (orientation: landscape) and (max-height: 520px){
-    #top{display:none !important;}
-    #stage{margin:8px; border-radius:22px;}
-    #hud{display:flex;}
-    /* make overlays truly full-screen in landscape */
-    .overlay.show{display:flex;}
-    .panel{
-      width: min(980px, 96vw);
-      max-height: 94vh;
-      border-radius: 22px;
-      padding: 12px;
-    }
-    #miniArea{height: min(720px, 78vh);}
-    /* Garage: more usable with 2 columns */
-    .row{gap:10px}
-    .tile{min-width: 240px}
-  }
-
-  /* Portrait: keep top bar AND show HUD lightly (optional) on very small screens */
-  @media (orientation: portrait) and (max-width: 420px){
-    #hud{display:flex;}
-    #hud{top:auto;}
-    #hudStatus{max-width: 72vw;}
-  }
-
 </style>
 </head>
 <body>
@@ -292,22 +207,6 @@
   <div id="stage">
     <canvas id="c"></canvas>
     <div id="toast">YAY! 🎉</div>
-
-    <!-- Floating Mobile HUD (best for landscape) -->
-    <div id="hud" aria-hidden="false">
-      <div id="hudStatus">
-        <div id="hudFace">🚗</div>
-        <div id="hudText">
-          <div id="hudTitle">Toy Town Helper</div>
-          <div id="hudSub">Tap HELP bubble</div>
-        </div>
-      </div>
-      <div id="hudBtns">
-        <button class="hudBtn" id="hudGarage" title="Garage">🎨</button>
-        <button class="hudBtn" id="hudHorn" title="Honk">📣</button>
-      </div>
-    </div>
-
 
     <div id="garageOverlay" class="overlay">
       <div class="panel">
@@ -406,50 +305,6 @@
 
   const previewCanvas = $("previewCanvas");
   const pctx = previewCanvas.getContext("2d");
-
-
-  // ===== HUD wiring (mirrors the top bar, great for landscape) =====
-  const hud = document.getElementById("hud");
-  const hudFace = document.getElementById("hudFace");
-  const hudTitle = document.getElementById("hudTitle");
-  const hudSub = document.getElementById("hudSub");
-  const hudGarage = document.getElementById("hudGarage");
-  const hudHorn = document.getElementById("hudHorn");
-
-  function syncHUD(){
-    hudFace.textContent = face.textContent || "🚗";
-    hudTitle.textContent = title.textContent || "Toy Town Helper";
-    hudSub.textContent = sub.textContent || "Tap HELP bubble";
-  }
-  const _setTitle = (t)=>{ title.textContent=t; syncHUD(); };
-  const _setSub   = (t)=>{ sub.textContent=t; syncHUD(); };
-  const _setFace  = (t)=>{ face.textContent=t; syncHUD(); };
-
-  // Replace direct assignments in this file by also updating HUD (we patch by re-binding on mutation)
-  const mo = new MutationObserver(syncHUD);
-  mo.observe(face, {childList:true, characterData:true, subtree:true});
-  mo.observe(title,{childList:true, characterData:true, subtree:true});
-  mo.observe(sub,  {childList:true, characterData:true, subtree:true});
-  syncHUD();
-
-  hudGarage.onclick = ()=> garageBtn.click();
-  hudHorn.onclick = ()=> hornBtn.click();
-
-  // Optional: tap stage with 2 fingers to toggle top bar (debug)
-  let twoFinger=false;
-  canvas.addEventListener("touchstart",(e)=>{
-    if(e.touches && e.touches.length===2){ twoFinger=true; }
-  }, {passive:true});
-  canvas.addEventListener("touchend",(e)=>{
-    if(twoFinger){
-      twoFinger=false;
-      const topEl=document.getElementById("top");
-      if(topEl){
-        topEl.style.display = (topEl.style.display==="none") ? "" : "none";
-      }
-    }
-  }, {passive:true});
-
 
   // ===== Old Map (smaller) =====
   const world = { w: 1800, h: 1200 };
