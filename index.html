@@ -1,1675 +1,191 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>Toy Town Helper — Mobile</title>
-<style>
-  :root{
-    --ink:#1a1a1a;
-    --panel:#ffffffee;
-    --stroke:#00000014;
-    --shadow: 0 14px 40px rgba(0,0,0,.20);
-    --shadow2: 0 20px 60px rgba(0,0,0,.28);
-  }
-  html,body{height:100%;margin:0;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-    background:#bff2ff; touch-action:none; -webkit-user-select:none; user-select:none;}
-  #app{position:fixed; inset:0; display:flex; flex-direction:column;}
-  #top{display:flex; gap:10px; align-items:center; justify-content:space-between; padding:10px; padding-top:calc(10px + env(safe-area-inset-top));}
-  .card{
-    background:var(--panel);
-    border:4px solid var(--stroke);
-    border-radius:24px;
-    box-shadow:var(--shadow);
-    backdrop-filter: blur(6px);
-  }
-  #status{
-    flex:1; display:flex; align-items:center; gap:12px;
-    padding:10px 12px; min-height:74px;
-  }
-  #face{
-    width:60px;height:60px;border-radius:18px;
-    display:grid;place-items:center;font-size:36px;
-    background:#fff;border:4px solid #00000010;
-    box-shadow: inset 0 -8px 0 rgba(0,0,0,.06);
-  }
-  #texts{min-width:0}
-  #title{font-weight:1000; font-size:18px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  #sub{font-weight:850; font-size:14px; opacity:.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  #buttons{display:flex; gap:10px;}
-  .bigbtn{
-    width:74px;height:74px;border-radius:26px;
-    border:4px solid #00000010; background:#fff;
-    box-shadow:var(--shadow);
-    display:grid;place-items:center;
-    font-size:34px;
-    cursor:pointer; -webkit-tap-highlight-color:transparent;
-  }
-  .bigbtn:active{transform: translateY(1px) scale(.99);}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ahmed | Contact Info</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Minimalist Dark Mode Theme */
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #141414;
+            --text-main: #f5f5f5;
+            --text-muted: #a3a3a3;
+            --border-color: #262626;
+            --hover-bg: #1f1f1f;
+        }
 
-  #stage{
-    flex:1; position:relative; margin:0 10px 10px;
-    border-radius:28px; overflow:hidden;
-    border:5px solid #00000010; box-shadow:var(--shadow2);
-    background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.22));
-  }
-  canvas{width:100%;height:100%;display:block;}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
 
-  .overlay{
-    position:absolute; inset:0;
-    display:none;
-    background: rgba(0,0,0,.18);
-    backdrop-filter: blur(3px);
-  }
-  .overlay.show{display:flex;}
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
 
-  .panel{
-    margin:auto;
-    width:min(920px, 94vw);
-    max-height: 90vh;
-    overflow:auto;
-    padding:14px;
-    border-radius:28px;
-    background: var(--panel);
-    border:5px solid var(--stroke);
-    box-shadow:var(--shadow2);
-  }
+        /* Sleek Card Container */
+        .card {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 380px;
+            border-radius: 24px;
+            padding: 40px 24px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
 
-  .row{display:flex; gap:12px; flex-wrap:wrap;}
-  .h1{font-weight:1000; font-size:22px; color:var(--ink); margin:6px 0 10px;}
-  .hint{font-weight:850; opacity:.72; margin-bottom:10px;}
-  .tile{
-    flex:1; min-width: 240px;
-    padding:12px;
-    border-radius:24px;
-    border:4px solid #00000010;
-    background:#fff;
-    box-shadow: var(--shadow);
-  }
-  .tileTitle{font-weight:1000; font-size:16px; margin-bottom:10px;}
-  .picker{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-  .swatch{
-    width:54px;height:54px;border-radius:18px;
-    border:4px solid #00000010;
-    cursor:pointer;
-    box-shadow: inset 0 -8px 0 rgba(0,0,0,.06);
-    display:grid; place-items:center;
-  }
-  .swatch:active{transform: translateY(1px) scale(.99);}
-  .sliderBox{display:flex; align-items:center; gap:10px;}
-  input[type="range"]{width:100%}
-  .closeRow{display:flex; justify-content:space-between; gap:10px; margin-top:12px;}
-  .pill{
-    flex:1;
-    padding:14px 14px;
-    border-radius:22px;
-    border:4px solid #00000010;
-    background:#fff;
-    box-shadow:var(--shadow);
-    font-weight:1000;
-    font-size:18px;
-    cursor:pointer;
-  }
-  .pill:active{transform: translateY(1px) scale(.99);}
+        /* Profile Photo Area */
+        .profile-img-container {
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background-color: #1f1f1f; /* Placeholder background */
+        }
 
-  #previewBox{display:flex; gap:12px; align-items:center;}
-  #previewCanvas{
-    width:180px; height:120px;
-    border-radius:22px;
-    border:4px solid rgba(0,0,0,.10);
-    background: linear-gradient(180deg, rgba(94,194,255,.20), rgba(255,255,255,.85));
-    box-shadow: inset 0 -10px 0 rgba(0,0,0,.04);
-  }
-  #previewInfo{font-weight:900; opacity:.78;}
+        .profile-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
-  #miniOverlay .panel{padding:0; overflow:hidden;}
-  #miniHeader{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:12px;
-    border-bottom:4px solid #00000010;
-    background:#fff;
-  }
-  #miniName{font-weight:1000; font-size:18px;}
-  #miniArea{
-    position:relative;
-    height: min(620px, 76vh);
-    background: linear-gradient(180deg, rgba(255,255,255,.70), rgba(255,255,255,.25));
-    overflow:hidden;
-  }
-  #miniArea *{touch-action:none;}
-  .miniBtn{
-    width:70px;height:70px;border-radius:24px;
-    border:4px solid #00000010;background:#fff;
-    box-shadow:var(--shadow);
-    font-size:30px; display:grid; place-items:center;
-    cursor:pointer;
-  }
-  .miniBtn:active{transform: translateY(1px) scale(.99);}
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
 
-  #toast{
-    position:absolute; left:50%; top:14%;
-    transform: translateX(-50%);
-    padding:12px 16px;
-    border-radius:26px;
-    border:5px solid #00000010;
-    background:#fff;
-    box-shadow:var(--shadow2);
-    font-weight:1000;
-    font-size:28px;
-    display:none;
-    pointer-events:none;
-  }
-  #toast.show{display:block;}
+        p.location {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
 
-  /* Mobile: bigger tap targets, less text */
-  @media (max-width: 520px){
-    #title{font-size:16px}
-    #sub{font-size:13px}
-    .bigbtn{width:68px;height:68px;border-radius:24px;font-size:32px}
-    #status{min-height:70px}
-    #face{width:56px;height:56px;border-radius:16px}
-    .pill{font-size:17px}
-  }
+        /* Contact Buttons */
+        .contact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
 
-  /* Landscape phone: make top bar compact + bigger play area */
-  @media (orientation: landscape) and (max-height: 520px){
-    #top{padding:8px; padding-top:calc(6px + env(safe-area-inset-top)); gap:8px;}
-    #status{min-height:56px; padding:8px 10px; border-radius:22px;}
-    #face{width:46px;height:46px;border-radius:14px;font-size:28px}
-    #title{font-size:14px}
-    #sub{font-size:12px}
-    .bigbtn{width:56px;height:56px;border-radius:20px;font-size:26px}
-    #stage{margin:0 8px 8px; border-radius:24px}
-    .panel{max-height:92vh}
-    /* Garage: stack preview + controls nicer in landscape */
-    #previewCanvas{width:160px;height:106px}
-    .tile{min-width: 200px}
-  }
+        .contact-btn {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
 
-</style>
+        .contact-btn svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 16px;
+            fill: var(--text-muted);
+            flex-shrink: 0;
+            transition: fill 0.2s ease;
+        }
+
+        .contact-btn:hover {
+            background-color: var(--hover-bg);
+            border-color: #404040;
+        }
+
+        .contact-btn:hover svg {
+            fill: var(--text-main);
+        }
+
+        /* Primary "Save Contact" Button */
+        .contact-btn.primary {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+            border-color: var(--text-main);
+            justify-content: center;
+            margin-top: 16px;
+            font-weight: 600;
+        }
+
+        .contact-btn.primary svg {
+            fill: var(--bg-color);
+            margin-right: 8px;
+        }
+
+        .contact-btn.primary:hover {
+            background-color: #d4d4d4;
+        }
+
+    </style>
 </head>
 <body>
-<div id="app">
-  <div id="top">
-    <div id="status" class="card">
-      <div id="face">🚗</div>
-      <div id="texts">
-        <div id="title">Toy Town Helper</div>
-        <div id="sub">Tap the HELP bubble → mini-game → next HELP!</div>
-      </div>
-    </div>
-    <div id="buttons">
-      <button class="bigbtn" id="garageBtn" title="Garage">🎨</button>
-      <button class="bigbtn" id="hornBtn" title="Honk">📣</button>
-    </div>
-  </div>
 
-  <div id="stage">
-    <canvas id="c"></canvas>
-    <div id="toast">YAY! 🎉</div>
-
-    <div id="garageOverlay" class="overlay">
-      <div class="panel">
-        <div class="h1">Garage 🎨</div>
-        <div class="hint">Preview ✅ Color • Size • Wheels • Horn</div>
-
-        <div class="row">
-          <div class="tile">
-            <div class="tileTitle">Car Preview</div>
-            <div id="previewBox">
-              <canvas id="previewCanvas" width="360" height="240"></canvas>
-              <div id="previewInfo">
-                Tap 📣 to test horn.<br/>
-                Make it BIG or TINY.<br/>
-                Then press PLAY 🚗
-              </div>
-            </div>
-          </div>
-
-          <div class="tile">
-            <div class="tileTitle">Color</div>
-            <div class="picker" id="colorPicker"></div>
-          </div>
-
-          <div class="tile">
-            <div class="tileTitle">Car Size</div>
-            <div class="sliderBox">
-              <span style="font-weight:1000;">🐭</span>
-              <input id="sizeRange" type="range" min="0.7" max="1.9" step="0.05" value="1.0"/>
-              <span style="font-weight:1000;">🦖</span>
-            </div>
-          </div>
-
-          <div class="tile">
-            <div class="tileTitle">Wheels</div>
-            <div class="sliderBox">
-              <span style="font-weight:1000;">🛞</span>
-              <input id="wheelRange" type="range" min="0.7" max="2.2" step="0.05" value="1.0"/>
-              <span style="font-weight:1000;">🛞</span>
-            </div>
-          </div>
-
-          <div class="tile">
-            <div class="tileTitle">Horn</div>
-            <div class="picker" id="hornPicker"></div>
-          </div>
+    <div class="card">
+        <div class="profile-img-container">
+            <img src="https://ui-avatars.com/api/?name=Malek&background=1f1f1f&color=fff&size=256" alt="Malek's Photo">
         </div>
 
-        <div class="closeRow">
-          <button class="pill" id="closeGarage">PLAY! 🚗</button>
-          <button class="pill" id="randomize">RANDOM ✨</button>
+        <h1>Ahmed Hamdy </h1>
+        <p class="location">6th of October City, Egypt</p>
+
+        <div class="contact-list">
+            <a href="tel:+201061625197" class="contact-btn">
+                <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+                +20 106 162 5197
+            </a>
+
+            <a href="mailto:malekplayz123@gmail.com" class="contact-btn">
+                <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                malekplayz123@gmail.com
+            </a>
+
+            <button onclick="downloadVCard()" class="contact-btn primary">
+                <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                Save Contact
+            </button>
         </div>
-      </div>
     </div>
 
-    <div id="miniOverlay" class="overlay">
-      <div class="panel">
-        <div id="miniHeader">
-          <div id="miniName">Mini-game</div>
-          <button class="miniBtn" id="miniExit" title="Exit">❌</button>
-        </div>
-        <div id="miniArea"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-(() => {
-  const $ = (id)=>document.getElementById(id);
-
-  const canvas = $("c");
-  const ctx = canvas.getContext("2d");
-  const stage = $("stage");
-
-  const face  = $("face");
-  const title = $("title");
-  const sub   = $("sub");
-  const toast = $("toast");
-
-  const garageOverlay = $("garageOverlay");
-  const garageBtn = $("garageBtn");
-  const closeGarage = $("closeGarage");
-  const randomizeBtn = $("randomize");
-
-  const colorPicker = $("colorPicker");
-  const hornPicker  = $("hornPicker");
-  const sizeRange   = $("sizeRange");
-  const wheelRange  = $("wheelRange");
-  const hornBtn = $("hornBtn");
-
-  const miniOverlay = $("miniOverlay");
-  const miniArea = $("miniArea");
-  const miniName = $("miniName");
-  const miniExit = $("miniExit");
-
-  const previewCanvas = $("previewCanvas");
-  const pctx = previewCanvas.getContext("2d");
-
-  // ===== Old Map (smaller) =====
-  const world = { w: 1800, h: 1200 };
-  const view  = { w: 1200, h: 780 }; // recalculated to screen aspect
-  const cam = { x: 300, y: 600 };
-
-  function updateViewToScreen(){
-    const dpr = canvas._dpr || 1;
-    const cw = canvas.width / dpr;
-    const ch = canvas.height / dpr;
-    const aspect = cw / ch;
-    view.h = 760;               // zoom-out amount (smaller map)
-    view.w = view.h * aspect;   // always fits screen ✅
-  }
-
-  function resize(){
-    const dpr = Math.max(1, Math.min(2, devicePixelRatio || 1));
-    canvas.width  = Math.floor(stage.clientWidth  * dpr);
-    canvas.height = Math.floor(stage.clientHeight * dpr);
-    canvas._dpr = dpr;
-    updateViewToScreen();
-  }
-  addEventListener("resize", resize, {passive:true});
-
-    // Load saved car settings (color/size/wheels/horn/position)
-  loadCar();
-
-// ===== Sound =====
-  let audioCtx = null;
-  function beep(freq=600, dur=0.08, gain=0.05, type="sine"){
-    try{
-      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = type;
-      o.frequency.value = freq;
-      g.gain.value = gain;
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start();
-      o.stop(audioCtx.currentTime + dur);
-    }catch(e){}
-  }
-  const Horns = [
-    {id:"beep", icon:"🚗", play:()=>{beep(520,0.08,0.05); setTimeout(()=>beep(390,0.10,0.05),90);} },
-    {id:"toot", icon:"🎺", play:()=>{beep(740,0.06,0.05,"triangle"); setTimeout(()=>beep(660,0.08,0.05,"triangle"),70);} },
-    {id:"boop", icon:"🤖", play:()=>{beep(330,0.07,0.05,"square"); setTimeout(()=>beep(440,0.07,0.04,"square"),80);} },
-    {id:"ding", icon:"🔔", play:()=>{beep(880,0.06,0.045); setTimeout(()=>beep(990,0.08,0.04),80);} },
-    {id:"woo",  icon:"🚨", play:()=>{beep(740,0.10,0.04); setTimeout(()=>beep(540,0.10,0.04),110); setTimeout(()=>beep(740,0.10,0.04),220);} },
-  ];
-  function happy(){ beep(900,0.06,0.05); setTimeout(()=>beep(1050,0.07,0.045),90); }
-
-  // ===== UI =====
-  function showToast(text){
-    toast.textContent = text;
-    toast.classList.add("show");
-    setTimeout(()=>toast.classList.remove("show"), 650);
-  }
-
-  // ===== Camera transforms =====
-  function fit(){
-    const dpr = canvas._dpr || 1;
-    const cw = canvas.width, ch = canvas.height;
-    const pad = 16*dpr;
-    const sx = (cw - pad*2) / view.w;
-    const sy = (ch - pad*2) / view.h;
-    const s = Math.min(sx, sy);
-    const ox = (cw - view.w*s) / 2;
-    const oy = (ch - view.h*s) / 2;
-    return {ox,oy,s};
-  }
-  function W2C(x,y){
-    const {ox,oy,s} = fit();
-    const vx = x - cam.x + view.w/2;
-    const vy = y - cam.y + view.h/2;
-    return {x: ox + vx*s, y: oy + vy*s, s};
-  }
-  function C2W(px,py){
-    const {ox,oy,s} = fit();
-    const vx = (px - ox) / s;
-    const vy = (py - oy) / s;
-    return {x: vx + cam.x - view.w/2, y: vy + cam.y - view.h/2};
-  }
-  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  const rand=(a,b)=>a+Math.random()*(b-a);
-  function lerpAngle(a,b,t){
-    const diff = Math.atan2(Math.sin(b-a), Math.cos(b-a));
-    return a + diff*t;
-  }
-
-  // ===== Car customization =====
-  const car = {
-    x: 240, y: 620, heading: 0,
-    color: "#5ec2ff",
-    size: 1.0,
-    wheel: 1.0,
-    hornId: "beep",
-  };
-
-  // ===== Save/Load Car (persists after refresh) =====
-  const CAR_SAVE_KEY = "toyTownCarV1";
-  function clampNum(v, a, b, fallback){
-    v = Number(v);
-    if(!Number.isFinite(v)) return fallback;
-    return Math.max(a, Math.min(b, v));
-  }
-  function loadCar(){
-    try{
-      const raw = localStorage.getItem(CAR_SAVE_KEY);
-      if(!raw) return;
-      const data = JSON.parse(raw);
-      if(!data || typeof data !== "object") return;
-
-      // Only accept safe fields
-      if(typeof data.color === "string") car.color = data.color;
-      if(typeof data.hornId === "string") car.hornId = data.hornId;
-
-      car.size  = clampNum(data.size,  0.7, 1.9, car.size);
-      car.wheel = clampNum(data.wheel, 0.7, 2.2, car.wheel);
-
-      car.x = clampNum(data.x, 80, world.w-80, car.x);
-      car.y = clampNum(data.y, 80, world.h-80, car.y);
-      car.heading = clampNum(data.heading, -Math.PI*2, Math.PI*2, car.heading);
-    }catch(e){}
-  }
-  function saveCar(){
-    try{
-      const data = {
-        x: car.x, y: car.y, heading: car.heading,
-        color: car.color, size: car.size, wheel: car.wheel, hornId: car.hornId
-      };
-      localStorage.setItem(CAR_SAVE_KEY, JSON.stringify(data));
-    }catch(e){}
-  }
-
-  const CarColors = ["#ff4fa3","#5ec2ff","#7cffb2","#ffd27c","#b48cff","#ffb36b","#ffffff","#222222","#ff3b30","#34c759"];
-  function currentHorn(){ return Horns.find(h=>h.id===car.hornId) || Horns[0]; }
-
-  function previewDraw(){
-    const W = previewCanvas.width, H = previewCanvas.height;
-    pctx.clearRect(0,0,W,H);
-    pctx.fillStyle = "rgba(255,255,255,.8)";
-    pctx.fillRect(0,0,W,H);
-
-    const cx = W*0.50, cy = H*0.58;
-    const s = 1.25 * car.size;
-
-    pctx.fillStyle = "rgba(0,0,0,.14)";
-    pctx.beginPath(); pctx.ellipse(cx, cy+55*s, 90*s, 26*s, 0, 0, Math.PI*2); pctx.fill();
-
-    pctx.fillStyle = car.color;
-    pctx.strokeStyle = "rgba(0,0,0,.12)";
-    pctx.lineWidth = 10*s;
-    rr(cx-110*s, cy-60*s, 220*s, 140*s, 60*s);
-    pctx.fill(); pctx.stroke();
-
-    pctx.fillStyle = "rgba(255,255,255,.55)";
-    rr(cx-20*s, cy-55*s, 90*s, 70*s, 35*s);
-    pctx.fill();
-
-    const ws = s * car.wheel;
-    pctx.fillStyle = "rgba(0,0,0,.35)";
-    pctx.beginPath(); pctx.arc(cx-70*s, cy+75*s, 22*ws, 0, Math.PI*2); pctx.fill();
-    pctx.beginPath(); pctx.arc(cx+70*s, cy+75*s, 22*ws, 0, Math.PI*2); pctx.fill();
-
-    pctx.font = `28px system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    pctx.textAlign="left"; pctx.textBaseline="top";
-    const icon = (Horns.find(h=>h.id===car.hornId)?.icon) || "📣";
-    pctx.fillStyle = "rgba(0,0,0,.35)";
-    pctx.fillText(`Horn: ${icon}`, 14, 14);
-
-    function rr(x,y,w,h,r){
-      const rr = Math.min(r,w/2,h/2);
-      pctx.beginPath();
-      pctx.moveTo(x+rr,y);
-      pctx.arcTo(x+w,y,x+w,y+h,rr);
-      pctx.arcTo(x+w,y+h,x,y+h,rr);
-      pctx.arcTo(x,y+h,x,y,rr);
-      pctx.arcTo(x,y,x+w,y,rr);
-      pctx.closePath();
-    }
-  }
-
-  function buildGarageUI(){
-    colorPicker.innerHTML = "";
-    CarColors.forEach(col=>{
-      const b = document.createElement("button");
-      b.className="swatch";
-      b.style.background = col;
-      b.onclick = ()=>{ car.color=col; previewDraw(); saveCar(); };
-      colorPicker.appendChild(b);
-    });
-
-    hornPicker.innerHTML = "";
-    Horns.forEach(h=>{
-      const b = document.createElement("button");
-      b.className="swatch";
-      b.style.background="#fff";
-      b.innerHTML = `<div style="font-size:28px">${h.icon}</div>`;
-      b.onclick = ()=>{ car.hornId=h.id; h.play(); previewDraw(); saveCar(); };
-      hornPicker.appendChild(b);
-    });
-
-    sizeRange.value = car.size;
-    wheelRange.value = car.wheel;
-    previewDraw();
-  }
-
-  garageBtn.onclick = ()=>{ buildGarageUI(); garageOverlay.classList.add("show"); };
-  closeGarage.onclick = ()=>{ garageOverlay.classList.remove("show"); };
-  randomizeBtn.onclick = ()=>{
-    car.color = CarColors[Math.floor(Math.random()*CarColors.length)];
-    car.size  = 0.7 + Math.random()*1.0;
-    car.wheel = 0.7 + Math.random()*1.2;
-    car.hornId = Horns[Math.floor(Math.random()*Horns.length)].id;
-    sizeRange.value = car.size;
-    wheelRange.value = car.wheel;
-    currentHorn().play();
-    previewDraw();
-    saveCar();
-    showToast("WOW! ✨");
-  };
-  sizeRange.oninput = ()=>{ car.size = parseFloat(sizeRange.value); previewDraw(); saveCar(); };
-  wheelRange.oninput = ()=>{ car.wheel = parseFloat(wheelRange.value); previewDraw(); saveCar(); };
-  hornBtn.onclick = ()=> currentHorn().play();
-
-  // ===== Town Toys =====
-  const toys = [
-    {x:240,y:620,w:180,h:160,emoji:"🏠",bounce:0, z:1},
-    {x:560,y:360,w:260,h:190,emoji:"🎪",bounce:0, z:1},
-    {x:860,y:720,w:260,h:190,emoji:"🌳",bounce:0, z:1},
-    {x:1110,y:420,w:320,h:240,emoji:"🏰",bounce:0, z:3},
-    {x:1200,y:840,w:260,h:190,emoji:"🦆",bounce:0, z:1},
-    {x:1480,y:640,w:260,h:190,emoji:"🍦",bounce:0, z:1},
-    {x:1520,y:980,w:260,h:190,emoji:"🚂",bounce:0, z:1},
-    {x:420,y:980,w:260,h:190,emoji:"🧸",bounce:0, z:1},
-  ];
-  function hitToy(wx,wy){
-    let best=null;
-    for(const t of toys){
-      if(Math.abs(wx-t.x) < t.w/2 && Math.abs(wy-t.y) < t.h/2){
-        if(!best || (t.z||0) > (best.z||0)) best=t;
-      }
-    }
-    return best;
-  }
-
-  // ===== Mini-game Safety (fix "2nd time" bugs) =====
-  const MiniGames = [];
-  let miniSessionId = 0;
-  let miniCleanups = [];
-
-  function miniNewSession(){
-    for(const fn of miniCleanups) { try{ fn(); }catch(e){} }
-    miniCleanups = [];
-    miniSessionId++;
-    return miniSessionId;
-  }
-  function miniSetTimeout(fn, ms, sid){
-    const id = setTimeout(()=>{ if(sid===miniSessionId) fn(); }, ms);
-    miniCleanups.push(()=>clearTimeout(id));
-    return id;
-  }
-  function miniSetInterval(fn, ms, sid){
-    const id = setInterval(()=>{ if(sid===miniSessionId) fn(); }, ms);
-    miniCleanups.push(()=>clearInterval(id));
-    return id;
-  }
-  function miniRAF(fn, sid){
-    let rafId=0;
-    const step = (t)=>{ if(sid!==miniSessionId) return; fn(t); rafId=requestAnimationFrame(step); };
-    rafId=requestAnimationFrame(step);
-    miniCleanups.push(()=>cancelAnimationFrame(rafId));
-  }
-  function clearMiniArea(){
-    miniNewSession();
-    miniArea.innerHTML = "";
-    miniArea.onclick = null;
-    miniArea.onpointerdown = null;
-    miniArea.onpointermove = null;
-    miniArea.onpointerup = null;
-    miniArea.onpointercancel = null;
-  }
-
-  function addMiniTip(container, text){
-    const tip = document.createElement("div");
-    tip.textContent = text;
-    tip.style.cssText = `
-      position:absolute; left:50%; top:14px; transform:translateX(-50%);
-      padding:10px 14px; border-radius: 22px;
-      background:#fff; border:4px solid rgba(0,0,0,.10);
-      box-shadow: 0 14px 40px rgba(0,0,0,.20);
-      font-weight:1000; font-size:22px; user-select:none;
-    `;
-    container.appendChild(tip);
-  }
-
-  function startMiniGame(id, onWin){
-    const mg = MiniGames.find(g=>g.id===id) || MiniGames[0];
-    miniName.textContent = mg.name;
-    clearMiniArea();
-    miniOverlay.classList.add("show");
-
-    const sid = miniSessionId;
-    try{
-      mg.start(miniArea, ()=>{
-        if(sid !== miniSessionId) return;
-        happy();
-        miniOverlay.classList.remove("show");
-        clearMiniArea();
-        onWin?.();
-      }, sid);
-    }catch(e){
-      miniOverlay.classList.remove("show");
-      clearMiniArea();
-      onWin?.();
-    }
-  }
-  miniExit.onclick = ()=>{ miniOverlay.classList.remove("show"); clearMiniArea(); };
-
-  
-  // ===== Mini-games (10 unique games: educational + fun) =====
-
-  // Tiny UI helper
-  function bigButton(text){
-    const b = document.createElement("button");
-    b.className = "pill";
-    b.style.flex = "initial";
-    b.style.minWidth = "min(28vw, 180px)";
-    b.style.fontSize = "22px";
-    b.textContent = text;
-    return b;
-  }
-  function centerBox(container){
-    const box = document.createElement("div");
-    box.style.cssText = `
-      position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-      display:flex; flex-direction:column; align-items:center; gap:14px;
-      width:min(720px, 92vw);
-    `;
-    container.appendChild(box);
-    return box;
-  }
-  function shuffle(arr){
-    for(let i=arr.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [arr[i],arr[j]] = [arr[j],arr[i]];
-    }
-    return arr;
-  }
-
-  // 1) Count the Animals (educational)
-  MiniGames.push({
-    id:"count_animals", name:"Count the Animals 🐶",
-    start(container, win, sid){
-      container.style.position="relative";
-      const animals = ["🐶","🐱","🦆","🐸","🐻","🦊"];
-      const a = animals[Math.floor(Math.random()*animals.length)];
-      const count = 1 + Math.floor(Math.random()*5);
-
-      addMiniTip(container, `HOW MANY ${a} ?`);
-
-      const box = centerBox(container);
-
-      const show = document.createElement("div");
-      show.style.cssText = "font-size:70px; text-align:center; line-height:1.15; user-select:none;";
-      show.textContent = Array(count).fill(a).join(" ");
-      box.appendChild(show);
-
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex; gap:12px; flex-wrap:wrap; justify-content:center;";
-      box.appendChild(row);
-
-      const options = shuffle([count, clamp(count-1,1,5), clamp(count+1,1,5)]).filter((v,i,arr)=>arr.indexOf(v)===i);
-      while(options.length < 3){
-        const v = 1 + Math.floor(Math.random()*5);
-        if(!options.includes(v)) options.push(v);
-      }
-      shuffle(options);
-
-      options.forEach(v=>{
-        const b = bigButton(String(v));
-        b.onclick = ()=>{
-          if(sid!==miniSessionId) return;
-          if(v===count){ happy(); win(); }
-          else{ beep(240,0.08,0.05); b.style.opacity=".45"; }
-        };
-        row.appendChild(b);
-      });
-    }
-  });
-
-  // 2) Match Shapes (drag)  ✅ based on your existing "match" but simplified & more forgiving
-  MiniGames.push({
-    id:"match_shapes", name:"Match Shapes 🧩",
-    start(container, win, sid){
-      container.style.position="relative";
-      const W=container.clientWidth, H=container.clientHeight;
-      addMiniTip(container, "DRAG TO MATCH!");
-
-      const targets = [
-        {emoji:"🟥", x: W*0.78, y: H*0.34},
-        {emoji:"🟦", x: W*0.82, y: H*0.58},
-        {emoji:"🟨", x: W*0.74, y: H*0.80},
-      ];
-      const pieces = [
-        {emoji:"🟥", x: W*0.22, y: H*0.34},
-        {emoji:"🟦", x: W*0.20, y: H*0.58},
-        {emoji:"🟨", x: W*0.24, y: H*0.80},
-      ];
-
-      let done=0;
-
-      for(const t of targets){
-        const el=document.createElement("div");
-        el.textContent=t.emoji;
-        el.style.cssText=`
-          position:absolute; left:${t.x}px; top:${t.y}px; transform:translate(-50%,-50%);
-          width:116px; height:116px; border-radius: 34px;
-          background:#fff; border:6px dashed rgba(0,0,0,.18);
-          display:grid; place-items:center; font-size:54px;
-        `;
-        container.appendChild(el);
-      }
-
-      function makePiece(p){
-        const el=document.createElement("div");
-        el.textContent=p.emoji;
-        el.style.cssText=`
-          position:absolute; left:${p.x}px; top:${p.y}px; transform:translate(-50%,-50%);
-          width:116px; height:116px; border-radius: 34px;
-          background:#fff; border:6px solid rgba(0,0,0,.12);
-          box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          display:grid; place-items:center; font-size:54px;
-          touch-action:none; user-select:none;
-        `;
-        container.appendChild(el);
-
-        let dragging=false, offX=0, offY=0;
-
-        el.onpointerdown=(e)=>{
-          if(sid!==miniSessionId) return;
-          dragging=true;
-          el.setPointerCapture(e.pointerId);
-          const r=el.getBoundingClientRect();
-          offX = e.clientX - (r.left + r.width/2);
-          offY = e.clientY - (r.top  + r.height/2);
-          beep(760,0.05,0.04);
-        };
-        el.onpointermove=(e)=>{
-          if(!dragging || sid!==miniSessionId) return;
-          const cr=container.getBoundingClientRect();
-          el.style.left = `${e.clientX - cr.left - offX}px`;
-          el.style.top  = `${e.clientY - cr.top  - offY}px`;
-        };
-        el.onpointerup=()=>{
-          if(sid!==miniSessionId) return;
-          dragging=false;
-
-          const er=el.getBoundingClientRect();
-          const ex=er.left + er.width/2;
-          const ey=er.top  + er.height/2;
-          const cr=container.getBoundingClientRect();
-
-          for(const t of targets){
-            if(t.emoji!==p.emoji) continue;
-            const tx=cr.left + t.x;
-            const ty=cr.top  + t.y;
-            if(Math.hypot(ex-tx, ey-ty) < 82){ // more forgiving for kids
-              el.style.left=`${t.x}px`;
-              el.style.top =`${t.y}px`;
-              el.onpointerdown=el.onpointermove=el.onpointerup=null;
-              done++;
-              happy();
-              if(done>=3) win();
-            }
-          }
-        };
-      }
-      pieces.forEach(makePiece);
-    }
-  });
-
-  // 3) Tap the Letter (educational)
-  MiniGames.push({
-    id:"tap_letter", name:"Tap the Letter 🔤",
-    start(container, win, sid){
-      container.style.position="relative";
-      const letters = "ABCDEF".split("");
-      const target = letters[Math.floor(Math.random()*letters.length)];
-      addMiniTip(container, `TAP "${target}"`);
-
-      let score=0, needed=8;
-
-      const grid=document.createElement("div");
-      grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-        display:grid; grid-template-columns: repeat(3, min(28vw, 140px)); gap:14px;`;
-      container.appendChild(grid);
-
-      function newRound(){
-        if(sid!==miniSessionId) return;
-        grid.innerHTML="";
-        const picks=[];
-        picks.push(target);
-        while(picks.length<9) picks.push(letters[Math.floor(Math.random()*letters.length)]);
-        shuffle(picks);
-
-        picks.forEach(ch=>{
-          const b=document.createElement("button");
-          b.style.cssText=`width:min(28vw,140px); height:min(28vw,140px); border-radius:36px;
-            border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
-            font-weight:1000; font-size:56px;`;
-          b.textContent=ch;
-          b.onclick=()=>{
-            if(sid!==miniSessionId) return;
-            if(ch===target){
-              beep(990,0.06,0.04);
-              score++;
-              if(score>=needed) { happy(); win(); }
-              else newRound();
-            }else{
-              beep(240,0.08,0.05);
-              b.style.opacity=".35";
-            }
-          };
-          grid.appendChild(b);
-        });
-      }
-      newRound();
-    }
-  });
-
-  // 4) Pattern Builder (educational logic)
-  MiniGames.push({
-    id:"pattern_builder", name:"Pattern Builder 🔴🟡",
-    start(container, win, sid){
-      container.style.position="relative";
-      const A = {emoji:"🔴", label:"RED"};
-      const B = {emoji:"🟡", label:"YELLOW"};
-      const C = {emoji:"🔵", label:"BLUE"};
-      const patterns = [
-        {seq:[A,B,A,B], next:A},
-        {seq:[A,A,B,B], next:A},
-        {seq:[A,B,B,A], next:B},
-        {seq:[A,C,A,C], next:A},
-        {seq:[B,C,B,C], next:B},
-      ];
-      const p = patterns[Math.floor(Math.random()*patterns.length)];
-      addMiniTip(container, "WHAT COMES NEXT?");
-
-      const box = centerBox(container);
-
-      const seq = document.createElement("div");
-      seq.style.cssText = "font-size:64px; text-align:center; user-select:none;";
-      seq.textContent = p.seq.map(x=>x.emoji).join("  ") + "  ❓";
-      box.appendChild(seq);
-
-      const row=document.createElement("div");
-      row.style.cssText="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;";
-      box.appendChild(row);
-
-      const options = shuffle([p.next, A, B, C].filter((v,i,arr)=>arr.findIndex(x=>x.emoji===v.emoji)===i)).slice(0,3);
-      options.forEach(opt=>{
-        const b = document.createElement("button");
-        b.style.cssText=`width:min(28vw,160px); height:110px; border-radius:34px;
-          border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          font-size:54px; font-weight:1000;`;
-        b.textContent = opt.emoji;
-        b.onclick=()=>{
-          if(sid!==miniSessionId) return;
-          if(opt.emoji===p.next.emoji){ happy(); win(); }
-          else{ beep(240,0.08,0.05); b.style.opacity=".45"; }
-        };
-        row.appendChild(b);
-      });
-    }
-  });
-
-  // 5) Color Sort (educational drag)
-  MiniGames.push({
-    id:"color_sort", name:"Color Sort 🎨",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container, "DRAG INTO THE RIGHT BIN!");
-
-      const W=container.clientWidth, H=container.clientHeight;
-
-      const bins = [
-        {name:"RED",  color:"#ff3b30", x: W*0.22, y: H*0.72, accepts:["🍎","🍓","🍒"]},
-        {name:"YEL",  color:"#ffd60a", x: W*0.50, y: H*0.72, accepts:["🍌","🍋","🌟"]},
-        {name:"GREEN",color:"#34c759", x: W*0.78, y: H*0.72, accepts:["🥝","🍐","🐸"]},
-      ];
-
-      // bins UI
-      bins.forEach(b=>{
-        const el=document.createElement("div");
-        el.style.cssText=`
-          position:absolute; left:${b.x}px; top:${b.y}px; transform:translate(-50%,-50%);
-          width:min(26vw, 190px); height:160px;
-          border-radius:34px; border:5px solid rgba(0,0,0,.10);
-          background:${b.color}; box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          display:flex; flex-direction:column; justify-content:center; align-items:center;
-          font-weight:1000; color:rgba(0,0,0,.65);
-        `;
-        el.innerHTML = `<div style="font-size:18px; letter-spacing:1px;">${b.name}</div><div style="font-size:40px; opacity:.9;">🧺</div>`;
-        container.appendChild(el);
-      });
-
-      // items
-      const items = shuffle(["🍎","🍓","🍒","🍌","🍋","🌟","🥝","🍐","🐸"]).slice(0,6);
-      let placed=0;
-
-      function makeItem(emoji, x, y){
-        const el=document.createElement("div");
-        el.textContent=emoji;
-        el.style.cssText=`
-          position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%);
-          width:104px; height:104px; border-radius:34px;
-          background:#fff; border:6px solid rgba(0,0,0,.12);
-          box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          display:grid; place-items:center; font-size:56px;
-          touch-action:none; user-select:none;
-        `;
-        container.appendChild(el);
-
-        let dragging=false, offX=0, offY=0;
-
-        el.onpointerdown=(e)=>{
-          if(sid!==miniSessionId) return;
-          dragging=true;
-          el.setPointerCapture(e.pointerId);
-          const r=el.getBoundingClientRect();
-          offX = e.clientX - (r.left + r.width/2);
-          offY = e.clientY - (r.top  + r.height/2);
-          beep(760,0.05,0.04);
-        };
-        el.onpointermove=(e)=>{
-          if(!dragging || sid!==miniSessionId) return;
-          const cr=container.getBoundingClientRect();
-          el.style.left = `${e.clientX - cr.left - offX}px`;
-          el.style.top  = `${e.clientY - cr.top  - offY}px`;
-        };
-        el.onpointerup=()=>{
-          if(sid!==miniSessionId) return;
-          dragging=false;
-
-          const er=el.getBoundingClientRect();
-          const ex=er.left + er.width/2;
-          const ey=er.top  + er.height/2;
-          const cr=container.getBoundingClientRect();
-
-          let ok=false;
-          for(const b of bins){
-            const tx=cr.left + b.x;
-            const ty=cr.top  + b.y;
-            if(Math.hypot(ex-tx, ey-ty) < 110){
-              ok = b.accepts.includes(emoji);
-              if(ok){
-                el.style.left = `${b.x}px`;
-                el.style.top  = `${b.y-70}px`;
-                el.onpointerdown=el.onpointermove=el.onpointerup=null;
-                placed++;
-                happy();
-                if(placed>=items.length) win();
-              }else{
-                beep(240,0.08,0.05);
-              }
-              break;
-            }
-          }
-        };
-      }
-
-      items.forEach((em,i)=>{
-        makeItem(em, W*(0.24 + (i%3)*0.26), H*(0.30 + Math.floor(i/3)*0.22));
-      });
-    }
-  });
-
-  // 6) Drive to the Star (fun control)
-  MiniGames.push({
-    id:"drive_star", name:"Drive to the Star 🚗⭐",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container, "DRAG THE CAR TO ⭐");
-
-      const W=container.clientWidth, H=container.clientHeight;
-
-      // obstacles (soft)
-      const walls = [
-        {x:W*0.50, y:H*0.36, w:W*0.62, h:26},
-        {x:W*0.50, y:H*0.58, w:W*0.62, h:26},
-      ];
-
-      const star = document.createElement("div");
-      star.textContent="⭐";
-      star.style.cssText=`position:absolute; left:82%; top:50%;
-        transform:translate(-50%,-50%); font-size:84px; user-select:none;
-        filter: drop-shadow(0 18px 30px rgba(0,0,0,.25));`;
-      container.appendChild(star);
-
-      walls.forEach(w=>{
-        const el=document.createElement("div");
-        el.style.cssText=`position:absolute; left:${w.x}px; top:${w.y}px; transform:translate(-50%,-50%);
-          width:${w.w}px; height:${w.h}px; border-radius:18px;
-          background:rgba(0,0,0,.10); border:4px solid rgba(0,0,0,.08);`;
-        container.appendChild(el);
-      });
-
-      const carEl=document.createElement("div");
-      carEl.textContent="🚗";
-      let cx=W*0.18, cy=H*0.50;
-      carEl.style.cssText=`position:absolute; left:${cx}px; top:${cy}px; transform:translate(-50%,-50%);
-        font-size:86px; user-select:none; touch-action:none;
-        filter: drop-shadow(0 18px 30px rgba(0,0,0,.25));`;
-      container.appendChild(carEl);
-
-      function collides(x,y){
-        const r=44;
-        for(const w of walls){
-          const dx = Math.abs(x-w.x);
-          const dy = Math.abs(y-w.y);
-          if(dx < (w.w/2 + r) && dy < (w.h/2 + r)) return true;
+    <script>
+        function downloadVCard() {
+            const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Malek
+EMAIL:malekplayz123@gmail.com
+TEL;TYPE=CELL:+201061625197
+END:VCARD`;
+
+            const blob = new Blob([vcard], { type: 'text/vcard' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Malek.vcf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
-        return false;
-      }
-      function starHit(x,y){
-        const sx = W*0.82, sy = H*0.50;
-        return Math.hypot(x-sx, y-sy) < 70;
-      }
-
-      let dragging=false, offX=0, offY=0;
-      carEl.onpointerdown=(e)=>{
-        if(sid!==miniSessionId) return;
-        dragging=true;
-        carEl.setPointerCapture(e.pointerId);
-        const r=carEl.getBoundingClientRect();
-        offX = e.clientX - (r.left + r.width/2);
-        offY = e.clientY - (r.top  + r.height/2);
-        beep(760,0.05,0.04);
-      };
-      carEl.onpointermove=(e)=>{
-        if(!dragging || sid!==miniSessionId) return;
-        const cr=container.getBoundingClientRect();
-        let nx = e.clientX - cr.left - offX;
-        let ny = e.clientY - cr.top  - offY;
-        nx = clamp(nx, 70, W-70);
-        ny = clamp(ny, 140, H-80);
-
-        // if colliding, nudge back toward old position (soft walls)
-        if(collides(nx,ny)){
-          beep(220,0.05,0.03);
-          nx = (nx + cx*2)/3;
-          ny = (ny + cy*2)/3;
-        }
-        cx=nx; cy=ny;
-        carEl.style.left=cx+"px";
-        carEl.style.top=cy+"px";
-
-        if(starHit(cx,cy)){ happy(); win(); }
-      };
-      carEl.onpointerup=()=>{ dragging=false; };
-      carEl.onpointercancel=()=>{ dragging=false; };
-    }
-  });
-
-  // 7) Catch the Falling Toy (timing)
-  MiniGames.push({
-    id:"catch_toy", name:"Catch the Toys 🧺",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container, "MOVE 🧺 AND CATCH!");
-
-      const W=container.clientWidth, H=container.clientHeight;
-
-      const basket=document.createElement("div");
-      let bx=W*0.5;
-      basket.textContent="🧺";
-      basket.style.cssText=`position:absolute; left:${bx}px; top:${H-90}px; transform:translate(-50%,-50%);
-        font-size:86px; user-select:none;`;
-      container.appendChild(basket);
-
-      const toys=["🧸","🧩","🦆","⭐","🍦"];
-      let falling=[];
-      let caught=0, needed=5;
-
-      const meter=document.createElement("div");
-      meter.style.cssText=`position:absolute; left:50%; top:72px; transform:translateX(-50%);
-        font-weight:1000; font-size:22px; background:#fff; border:4px solid rgba(0,0,0,.10);
-        padding:8px 12px; border-radius:22px; box-shadow: 0 14px 40px rgba(0,0,0,.20);`;
-      meter.textContent = `Caught: ${caught}/${needed}`;
-      container.appendChild(meter);
-
-      function spawn(){
-        const el=document.createElement("div");
-        el.textContent=toys[Math.floor(Math.random()*toys.length)];
-        const x=rand(70, W-70);
-        const y=110;
-        el.style.cssText=`position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%);
-          font-size:70px; user-select:none;`;
-        container.appendChild(el);
-        falling.push({el, x, y, vy: rand(160,240)});
-      }
-
-      // spawn slowly
-      miniSetInterval(()=>{ if(sid!==miniSessionId) return; if(falling.length<4) spawn(); }, 520, sid);
-
-      // move basket with pointer
-      container.onpointerdown=(e)=>{ if(sid!==miniSessionId) return; const r=container.getBoundingClientRect(); bx = clamp(e.clientX-r.left, 70, W-70); basket.style.left=bx+"px"; };
-      container.onpointermove=(e)=>{
-        if(sid!==miniSessionId) return;
-        if(e.buttons===0) return;
-        const r=container.getBoundingClientRect();
-        bx = clamp(e.clientX-r.left, 70, W-70);
-        basket.style.left=bx+"px";
-      };
-
-      miniRAF((t)=>{
-        if(sid!==miniSessionId) return;
-        const dt=0.016;
-        const basketY=H-90;
-        for(const f of falling){
-          f.y += f.vy*dt;
-          f.el.style.top = f.y+"px";
-
-          // catch check
-          if(Math.abs(f.x-bx) < 70 && Math.abs(f.y-basketY) < 60){
-            f.el.remove();
-            f.dead=true;
-            caught++;
-            happy();
-            meter.textContent = `Caught: ${caught}/${needed}`;
-            if(caught>=needed) win();
-          }
-          // missed
-          if(f.y > H+60){
-            f.el.remove();
-            f.dead=true;
-            beep(240,0.06,0.04);
-          }
-        }
-        falling = falling.filter(f=>!f.dead);
-      }, sid);
-    }
-  });
-
-  // 8) Stop the Bar (timing)
-  MiniGames.push({
-    id:"stop_bar", name:"Stop the Bar 🟩",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container, "TAP IN THE GREEN!");
-
-      const box = centerBox(container);
-
-      const track=document.createElement("div");
-      track.style.cssText=`position:relative; width:min(720px, 92vw); height:64px;
-        border-radius:26px; border:5px solid rgba(0,0,0,.10);
-        background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20); overflow:hidden;`;
-      box.appendChild(track);
-
-      // green zone
-      const good=document.createElement("div");
-      good.style.cssText=`position:absolute; left:62%; top:0; width:20%; height:100%;
-        background: rgba(52,199,89,.50);`;
-      track.appendChild(good);
-
-      // moving bar
-      const bar=document.createElement("div");
-      bar.style.cssText=`position:absolute; left:0%; top:0; width:12%; height:100%;
-        background: rgba(94,194,255,.65);`;
-      track.appendChild(bar);
-
-      const tap = bigButton("TAP ✋");
-      tap.style.minWidth="min(60vw, 360px)";
-      box.appendChild(tap);
-
-      let x=0, dir=1;
-      let rounds=0, needed=3;
-
-      const info=document.createElement("div");
-      info.style.cssText="font-weight:1000; font-size:20px; opacity:.75; text-align:center;";
-      info.textContent=`Hits: ${rounds}/${needed}`;
-      box.appendChild(info);
-
-      function inGreen(){
-        const left = x;           // 0..88
-        const right = x + 12;
-        return (left >= 62 && right <= 82);
-      }
-
-      miniRAF(()=>{
-        if(sid!==miniSessionId) return;
-        x += dir*1.3;
-        if(x<=0){ x=0; dir=1; }
-        if(x>=88){ x=88; dir=-1; }
-        bar.style.left = x+"%";
-      }, sid);
-
-      tap.onclick=()=>{
-        if(sid!==miniSessionId) return;
-        if(inGreen()){
-          rounds++;
-          happy();
-          info.textContent=`Hits: ${rounds}/${needed}`;
-          if(rounds>=needed) win();
-        }else{
-          beep(240,0.08,0.05);
-        }
-      };
-    }
-  });
-
-  // 9) Car Wash (interaction) ✅ your existing wash, kept
-  MiniGames.push({
-    id:"car_wash", name:"Car Wash 🧼",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container,"RUB 🧽 CLEAN!");
-      const W=container.clientWidth, H=container.clientHeight;
-
-      const meter=document.createElement("div");
-      meter.style.cssText=`position:absolute; left:50%; top:72px; transform:translateX(-50%);
-        font-weight:1000; font-size:22px; background:#fff; border:4px solid rgba(0,0,0,.10);
-        padding:8px 12px; border-radius:22px; box-shadow: 0 14px 40px rgba(0,0,0,.20);`;
-      container.appendChild(meter);
-
-      const carEl=document.createElement("div");
-      carEl.textContent="🚗";
-      carEl.style.cssText=`position:absolute; left:50%; top:54%; transform:translate(-50%,-50%); font-size:170px; filter:drop-shadow(0 18px 35px rgba(0,0,0,.25));`;
-      container.appendChild(carEl);
-
-      const wash=document.createElement("canvas");
-      wash.width=W; wash.height=H;
-      wash.style.cssText="position:absolute; inset:0; width:100%; height:100%;";
-      container.appendChild(wash);
-      const wctx=wash.getContext("2d");
-
-      wctx.fillStyle="rgba(90,70,40,.55)";
-      wctx.fillRect(0,0,W,H);
-
-      let cleaned=0;
-      let isDown=false;
-
-      function eraseAt(x,y){
-        wctx.save();
-        wctx.globalCompositeOperation="destination-out";
-        wctx.beginPath(); wctx.arc(x,y,50,0,Math.PI*2); wctx.fill();
-        wctx.restore();
-        cleaned += 2.2;
-        meter.textContent = `Clean: ${Math.min(100, Math.floor(cleaned/2))}%`;
-        if(cleaned > 190) win();
-      }
-
-      container.onpointerdown=(e)=>{
-        if(sid!==miniSessionId) return;
-        isDown=true;
-        container.setPointerCapture(e.pointerId);
-        beep(760,0.05,0.04);
-      };
-      container.onpointermove=(e)=>{
-        if(!isDown || sid!==miniSessionId) return;
-        const r=container.getBoundingClientRect();
-        eraseAt(e.clientX-r.left, e.clientY-r.top);
-      };
-      container.onpointerup=()=>{ isDown=false; };
-      container.onpointercancel=()=>{ isDown=false; };
-    }
-  });
-
-  // 10) Memory Flip (easy) ✅ simplified (3 pairs)
-  MiniGames.push({
-    id:"memory_flip", name:"Memory Flip 🧠",
-    start(container, win, sid){
-      container.style.position="relative";
-      addMiniTip(container, "MATCH 2 SAME!");
-      const icons=["🐱","🦆","⭐"];
-      let cards=[...icons,...icons];
-      shuffle(cards);
-
-      const grid=document.createElement("div");
-      grid.style.cssText=`position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-        display:grid; grid-template-columns: repeat(3, min(28vw, 140px)); gap:14px;`;
-      container.appendChild(grid);
-
-      let first=null, lock=false, matched=0;
-
-      function makeCard(icon){
-        const b=document.createElement("button");
-        b.dataset.icon=icon;
-        b.dataset.state="down";
-        b.style.cssText=`width:min(28vw,140px); height:min(28vw,140px); border-radius:36px;
-          border:4px solid rgba(0,0,0,.10); background:#fff; box-shadow: 0 14px 40px rgba(0,0,0,.20);
-          font-size:64px;`;
-        b.textContent="❔";
-        b.onclick=()=>{
-          if(sid!==miniSessionId) return;
-          if(lock) return;
-          if(b.dataset.state!=="down") return;
-
-          b.dataset.state="up";
-          b.textContent=b.dataset.icon;
-          beep(740,0.05,0.04);
-
-          if(!first){ first=b; return; }
-
-          if(first.dataset.icon === b.dataset.icon){
-            matched++;
-            first.dataset.state="matched";
-            b.dataset.state="matched";
-            first=null;
-            happy();
-            if(matched>=3) win();
-          }else{
-            lock=true;
-            const a=first;
-            first=null;
-            miniSetTimeout(()=>{
-              if(sid!==miniSessionId) return;
-              a.dataset.state="down"; a.textContent="❔";
-              b.dataset.state="down"; b.textContent="❔";
-              lock=false;
-            }, 650, sid);
-          }
-        };
-        return b;
-      }
-      cards.forEach(icon=>grid.appendChild(makeCard(icon)));
-    }
-  });
-
-
-function pickMiniGameId(){
-    return MiniGames[Math.floor(Math.random()*MiniGames.length)].id;
-  }
-
-  // ===== Missions (ALWAYS ONE HELP) =====
-  const MissionTypes = [{emoji:"🐱"},{emoji:"🍕"},{emoji:"🦆"},{emoji:"⭐"},{emoji:"🔥"},{emoji:"🎁"},{emoji:"🐸"},{emoji:"🍦"}];
-  let mission = null;
-  let activeMission = null;
-
-  
-  function spawnMissionNow(){
-    // Always spawn HELP within the current camera view around the car,
-    // so the bubble is ALWAYS on-screen (no off-screen hunting).
-    const type = MissionTypes[Math.floor(Math.random()*MissionTypes.length)];
-
-    const margin = 160;
-    const halfW = view.w/2;
-    const halfH = view.h/2;
-
-    const minX = clamp(car.x - halfW + margin, 120, world.w-120);
-    const maxX = clamp(car.x + halfW - margin, 120, world.w-120);
-    const minY = clamp(car.y - halfH + margin, 120, world.h-120);
-    const maxY = clamp(car.y + halfH - margin, 120, world.h-120);
-
-    mission = {
-      type,
-      x: rand(Math.min(minX,maxX), Math.max(minX,maxX)),
-      y: rand(Math.min(minY,maxY), Math.max(minY,maxY)),
-      pulse: Math.random()*10
-    };
-  }
-  spawnMissionNow();
-
-  function ensureMission(){
-    if(!activeMission && !mission) spawnMissionNow();
-  }
-
-  function hitMission(wx,wy){
-    if(!mission || activeMission) return null;
-    if(Math.hypot(wx-mission.x, wy-mission.y) < 110) return mission;
-    return null;
-  }
-
-  // ===== Confetti =====
-  let confetti=[];
-  function spawnConfettiAt(wx,wy){
-    const p = W2C(wx,wy);
-    const colors=["rgba(255,79,163,.95)","rgba(94,194,255,.95)","rgba(124,255,178,.95)","rgba(255,210,124,.95)","rgba(180,140,255,.95)"];
-    for(let i=0;i<44;i++){
-      confetti.push({
-        x:p.x, y:p.y,
-        vx:(Math.random()*560-280),
-        vy:(Math.random()*-650-240),
-        r:Math.random()*Math.PI,
-        vr:(Math.random()*10-5),
-        size:10+Math.random()*12,
-        life:1.0+Math.random()*0.5,
-        color: colors[i%colors.length]
-      });
-    }
-  }
-  function drawConfetti(dt){
-    for(const p of confetti){
-      p.vy += 820*dt;
-      p.x += p.vx*dt;
-      p.y += p.vy*dt;
-      p.r += p.vr*dt;
-      p.life -= dt;
-    }
-    confetti = confetti.filter(p=>p.life>0);
-    ctx.save();
-    for(const p of confetti){
-      ctx.save();
-      ctx.translate(p.x,p.y);
-      ctx.rotate(p.r);
-      ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
-      ctx.fillStyle = p.color;
-      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.65);
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  // ===== Draw world =====
-  function roundRect(x,y,w,h,r){
-    const rr=Math.min(r,w/2,h/2);
-    ctx.beginPath();
-    ctx.moveTo(x+rr,y);
-    ctx.arcTo(x+w,y,x+w,y+h,rr);
-    ctx.arcTo(x+w,y+h,x,y+h,rr);
-    ctx.arcTo(x,y+h,x,y,rr);
-    ctx.arcTo(x,y,x+w,y,rr);
-    ctx.closePath();
-  }
-  function drawBubble(wx,wy,emoji,label,pulse){
-    const p=W2C(wx,wy);
-    const s=p.s;
-    const r=(62 + Math.sin(pulse)*7)*s;
-
-    ctx.save();
-    ctx.globalAlpha=0.22;
-    ctx.fillStyle="#000";
-    ctx.beginPath(); ctx.ellipse(p.x, p.y+r*0.95, r*0.95, r*0.35, 0, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle="rgba(255,255,255,0.94)";
-    ctx.strokeStyle="rgba(0,0,0,0.12)";
-    ctx.lineWidth=6*s;
-    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
-
-    ctx.font = `${Math.floor(44*s)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillStyle="#111";
-    ctx.fillText(emoji, p.x, p.y-2*s);
-
-    ctx.globalAlpha=0.78;
-    ctx.font = `${Math.floor(16*s)}px system-ui`;
-    ctx.fillText(label, p.x, p.y+r*0.85);
-    ctx.restore();
-  }
-
-  function drawTown(now){
-    ctx.fillStyle="#bff2ff";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    // roads grid
-    const step=220;
-    ctx.save();
-    ctx.lineCap="round";
-    ctx.strokeStyle="rgba(0,0,0,0.08)";
-    ctx.lineWidth=18*fit().s;
-
-    for(let x=0; x<=world.w; x+=step){
-      const a=W2C(x,0), b=W2C(x,world.h);
-      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    }
-    for(let y=0; y<=world.h; y+=step){
-      const a=W2C(0,y), b=W2C(world.w,y);
-      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    }
-    ctx.restore();
-
-    // toys
-    for(const t of toys){
-      const p=W2C(t.x,t.y);
-      const s=p.s;
-      const bw=t.w*s, bh=t.h*s;
-      const yOff=Math.sin(t.bounce)*10*s;
-
-      ctx.save();
-      ctx.fillStyle="rgba(255,255,255,0.90)";
-      ctx.strokeStyle="rgba(0,0,0,0.10)";
-      ctx.lineWidth=6*s;
-      roundRect(p.x-bw/2, p.y-bh/2 + yOff, bw, bh, 28*s);
-      ctx.fill(); ctx.stroke();
-
-      ctx.font = `${Math.floor(56*s)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
-      ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillStyle="#111";
-      ctx.fillText(t.emoji, p.x, p.y+yOff);
-      ctx.restore();
-
-      t.bounce=Math.max(0,t.bounce-0.10);
-    }
-
-    // mini-map
-    const dpr = canvas._dpr || 1;
-    const pad = 18*dpr;
-    const mw = 170*dpr, mh = 120*dpr;
-    const x0 = canvas.width - mw - pad;
-    const y0 = pad;
-
-    ctx.save();
-    ctx.fillStyle="rgba(255,255,255,.90)";
-    ctx.strokeStyle="rgba(0,0,0,.10)";
-    ctx.lineWidth=5*dpr;
-    roundRect(x0,y0,mw,mh,20*dpr);
-    ctx.fill(); ctx.stroke();
-
-    const sx = mw / world.w;
-    const sy = mh / world.h;
-
-    ctx.font = `${Math.floor(18*dpr)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("🚗", x0 + car.x*sx, y0 + car.y*sy);
-    if(mission && !activeMission) ctx.fillText("❗", x0 + mission.x*sx, y0 + mission.y*sy);
-    ctx.restore();
-  }
-
-  function drawCar(){
-    const p=W2C(car.x,car.y);
-    const s=p.s * car.size;
-
-    ctx.save();
-    ctx.translate(p.x,p.y);
-    ctx.rotate(car.heading);
-
-    ctx.fillStyle="rgba(0,0,0,0.18)";
-    ctx.beginPath(); ctx.ellipse(0, 34*s, 44*s, 16*s, 0, 0, Math.PI*2); ctx.fill();
-
-    ctx.fillStyle=car.color;
-    ctx.strokeStyle="rgba(0,0,0,0.12)";
-    ctx.lineWidth=6*s;
-    rr(-46*s, -24*s, 92*s, 58*s, 26*s);
-    ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle="rgba(255,255,255,0.55)";
-    rr(-14*s, -16*s, 36*s, 26*s, 14*s);
-    ctx.fill();
-
-    const ws=s*car.wheel;
-    ctx.fillStyle="rgba(0,0,0,0.35)";
-    ctx.beginPath(); ctx.arc(-28*s, 32*s, 10*ws, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc( 28*s, 32*s, 10*ws, 0, Math.PI*2); ctx.fill();
-
-    ctx.restore();
-
-    function rr(x,y,w,h,r){
-      const rr=Math.min(r,w/2,h/2);
-      ctx.beginPath();
-      ctx.moveTo(x+rr,y);
-      ctx.arcTo(x+w,y,x+w,y+h,rr);
-      ctx.arcTo(x+w,y+h,x,y+h,rr);
-      ctx.arcTo(x,y+h,x,y,rr);
-      ctx.arcTo(x,y,x+w,y,rr);
-      ctx.closePath();
-    }
-  }
-
-  // ===== Main loop =====
-  let last=performance.now();
-  function loop(now){
-    const dt=Math.min(0.033,(now-last)/1000);
-    last=now;
-    // Save car position occasionally (so refresh keeps progress)
-    if(!loop._lastSave) loop._lastSave = 0;
-    if(now - loop._lastSave > 1000){ saveCar(); loop._lastSave = now; }
-
-
-    // keep help always present when not in active mission
-    ensureMission();
-
-    cam.x = clamp(car.x, view.w/2, world.w - view.w/2);
-    cam.y = clamp(car.y, view.h/2, world.h - view.h/2);
-
-    if(activeMission){
-      const dx = activeMission.x - car.x;
-      const dy = activeMission.y - car.y;
-      const dist = Math.hypot(dx,dy);
-      const speed = 290 * clamp(dist/260, 0.35, 1);
-      const nx = dx/(dist||1), ny = dy/(dist||1);
-      const targetHeading = Math.atan2(ny,nx);
-      car.heading = lerpAngle(car.heading, targetHeading, 0.11);
-
-      const wig = Math.sin(now/160)*0.18;
-      car.x += (nx*Math.cos(wig) - ny*Math.sin(wig)) * speed * dt;
-      car.y += (ny*Math.cos(wig) + nx*Math.sin(wig)) * speed * dt;
-
-      if(dist < 32){
-        const arriveX = activeMission.x, arriveY = activeMission.y;
-        activeMission = null;
-
-        spawnConfettiAt(arriveX, arriveY);
-        happy();
-
-        face.textContent = "⭐";
-        title.textContent = "Mini-game!";
-        sub.textContent = "Win to get the next HELP bubble";
-
-        startMiniGame(pickMiniGameId(), ()=>{
-          showToast("WIN! ⭐");
-          face.textContent = "🚗";
-          title.textContent = "Find HELP!";
-          sub.textContent = "Tap the bubble (always there!)";
-          // ✅ instantly spawn next help
-          spawnMissionNow();
-        });
-      }
-    }
-
-    drawTown(now);
-
-    if(mission && !activeMission){
-      mission.pulse += 0.08;
-      drawBubble(mission.x, mission.y, mission.type.emoji, "HELP!", mission.pulse);
-    }
-
-    drawCar();
-    drawConfetti(dt);
-
-    requestAnimationFrame(loop);
-  }
-
-  // ===== Input =====
-  function onTap(clientX, clientY){
-    if(garageOverlay.classList.contains("show")) return;
-    if(miniOverlay.classList.contains("show")) return;
-
-    const dpr = canvas._dpr || 1;
-    const rect = canvas.getBoundingClientRect();
-    const px = (clientX - rect.left) * dpr;
-    const py = (clientY - rect.top)  * dpr;
-    const w = C2W(px,py);
-
-    const m = hitMission(w.x,w.y);
-    if(m){
-      activeMission = {x:m.x, y:m.y, type:m.type};
-      mission = null;           // bubble disappears immediately
-      ensureMission();          // but a new one is queued after minigame win
-      beep(760,0.05,0.04);
-      face.textContent = activeMission.type.emoji;
-      title.textContent = "Driving!";
-      sub.textContent = "Follow the car 🚗";
-      return;
-    }
-
-    const t = hitToy(w.x,w.y);
-    if(t){
-      t.bounce = 7.0;
-      beep(760,0.05,0.04);
-      return;
-    }
-
-    currentHorn().play();
-  }
-  canvas.addEventListener("pointerdown", (e)=> onTap(e.clientX, e.clientY), {passive:true});
-
-  // init
-  buildGarageUI();
-  previewDraw();
-  resize();
-  requestAnimationFrame(loop);
-})();
-</script>
+    </script>
 </body>
 </html>
